@@ -10,25 +10,13 @@ const supabase = createClient(
 
 export default function Navbar() {
   const [usuario, setUsuario] = useState(null)
-  const [rol, setRol] = useState(null)
 
   useEffect(() => {
-    async function cargarSesion(session) {
-      setUsuario(session?.user ?? null)
-      if (session?.user) {
-        const rolGuardado = session.user.user_metadata?.rol
-        setRol(rolGuardado || 'comprador')
-      } else {
-        setRol(null)
-      }
-    }
-
     supabase.auth.getSession().then(({ data: { session } }) => {
-      cargarSesion(session)
+      setUsuario(session?.user ?? null)
     })
-
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => { cargarSesion(session) }
+      (_event, session) => { setUsuario(session?.user ?? null) }
     )
     return () => subscription.unsubscribe()
   }, [])
@@ -37,8 +25,6 @@ export default function Navbar() {
     await supabase.auth.signOut()
     window.location.href = '/'
   }
-
-  const panelUrl = rol === 'vendedor' ? '/vendedor' : '/comprador'
 
   if (!usuario) {
     return (
@@ -61,7 +47,12 @@ export default function Navbar() {
       </a>
       <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
         <span style={{ fontSize:'13px', color:'#666' }}>Hola, {usuario.user_metadata?.nombre || usuario.email}</span>
-        <a href={panelUrl} style={{ padding:'7px 16px', borderRadius:'8px', border:'1px solid #1D9E75', color:'#1D9E75', textDecoration:'none', fontSize:'13px' }}>Mi panel</a>
+        <a href='/comprador' style={{ padding:'7px 16px', borderRadius:'8px', border:'1px solid #ddd', color:'#444', textDecoration:'none', fontSize:'13px' }}>
+          Comprador
+        </a>
+        <a href='/vendedor' style={{ padding:'7px 16px', borderRadius:'8px', border:'1px solid #1D9E75', color:'#1D9E75', textDecoration:'none', fontSize:'13px', fontWeight:'500' }}>
+          Vendedor
+        </a>
         <button onClick={cerrarSesion} style={{ padding:'7px 16px', borderRadius:'8px', border:'1px solid #ddd', background:'transparent', cursor:'pointer', fontSize:'13px' }}>Cerrar sesion</button>
       </div>
     </nav>
