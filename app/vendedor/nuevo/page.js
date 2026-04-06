@@ -16,6 +16,8 @@ export default function NuevoRemate() {
     categoria: '', condicion: 'Como nuevo',
     ubicacion: '', duracion: '3'
   })
+  const [foto, setFoto] = useState(null)
+  const [fotoUrl, setFotoUrl] = useState('')
   const [cargando, setCargando] = useState(false)
   const [mensaje, setMensaje] = useState('')
   const [error, setError] = useState('')
@@ -28,19 +30,28 @@ export default function NuevoRemate() {
     setCargando(true)
     setError('')
     setMensaje('')
-
     if (!form.titulo || !form.precio_inicial || !form.categoria) {
       setError('Completa los campos obligatorios.')
       setCargando(false)
       return
     }
-
     const { data: { session } } = await supabase.auth.getSession()
     if (!session) { setError('Debes ingresar para publicar.'); setCargando(false); return }
-
     const fechaFin = new Date()
     fechaFin.setDate(fechaFin.getDate() + Number(form.duracion))
-
+    let imagen_url = null
+    if (foto) {
+      const nombreArchivo = session.user.id + '_' + Date.now() + '_' + foto.name
+      const { error: uploadError } = await supabase.storage
+        .from('fotos-remates')
+        .upload(nombreArchivo, foto)
+      if (!uploadError) {
+        const { data: urlData } = supabase.storage
+          .from('fotos-remates')
+          .getPublicUrl(nombreArchivo)
+        imagen_url = urlData.publicUrl
+      }
+    }
     const { error: err } = await supabase.from('remates').insert({
       titulo: form.titulo,
       descripcion: form.descripcion,
@@ -53,47 +64,56 @@ export default function NuevoRemate() {
       ubicacion: form.ubicacion,
       vendedor_id: session.user.id,
       fecha_fin: fechaFin.toISOString(),
-      activo: true
+      activo: true,
+      imagen_url: imagen_url,
     })
-
     if (err) { setError('Error al publicar: ' + err.message); setCargando(false); return }
-
-    setMensaje('¡Remate publicado exitosamente!')
+    setMensaje('Remate publicado exitosamente!')
     setTimeout(() => { window.location.href = '/vendedor' }, 1500)
     setCargando(false)
   }
 
-  const campo = { width:'100%', padding:'10px 12px', borderRadius:'8px', border:'1px solid #ddd', fontSize:'14px', marginTop:'5px' }
+  const campo = { width:'100%', padding:'10px 12px', borderRadius:'8px', border:'1px solid #ddd', fontSize:'14px', marginTop:'5px', boxSizing:'border-box' }
 
   return (
     <main style={{ fontFamily:'sans-serif', background:'#f9f9f9', minHeight:'100vh' }}>
       <Navbar />
       <div style={{ maxWidth:'640px', margin:'0 auto', padding:'24px' }}>
-
         <div style={{ display:'flex', alignItems:'center', gap:'12px', marginBottom:'20px' }}>
-          <a href='/vendedor' style={{ color:'#1D9E75', textDecoration:'none', fontSize:'13px' }}>← Mi panel</a>
+          <a href='/vendedor' style={{ color:'#1D9E75', textDecoration:'none', fontSize:'13px' }}>Mi panel</a>
           <h1 style={{ fontSize:'20px', fontWeight:'500' }}>Publicar nuevo remate</h1>
         </div>
-
         {error && <div style={{ background:'#FCEBEB', color:'#A32D2D', padding:'10px 14px', borderRadius:'8px', fontSize:'13px', marginBottom:'14px' }}>{error}</div>}
         {mensaje && <div style={{ background:'#E1F5EE', color:'#085041', padding:'10px 14px', borderRadius:'8px', fontSize:'13px', marginBottom:'14px' }}>{mensaje}</div>}
-
+        <div style={{ background:'#fff', border:'1px solid #eee', borderRadius:'12px', padding:'20px', marginBottom:'14px' }}>
+          <h2 style={{ fontSize:'14px', fontWeight:'500', marginBottom:'14px' }}>Foto del producto</h2>
+          <div style={{ border:'1px dashed #ddd', borderRadius:'8px', padding:'20px', textAlign:'center', background:'#f9f9f9' }}>
+            {fotoUrl ? (
+              <img src={fotoUrl} alt='preview' style={{ width:'100%', maxHeight:'200px', objectFit:'cover', borderRadius:'8px', marginBottom:'10px' }} />
+            ) : (
+              <p style={{ color:'#999', fontSize:'13px', marginBottom:'10px' }}>Sube una foto de tu producto</p>
+            )}
+            <input type='file' accept='image/*' onChange={(e) => {
+              const archivo = e.target.files[0]
+              if (!archivo) return
+              setFoto(archivo)
+              setFotoUrl(URL.createObjectURL(archivo))
+            }} style={{ fontSize:'13px' }} />
+          </div>
+        </div>
         <div style={{ background:'#fff', border:'1px solid #eee', borderRadius:'12px', padding:'20px', marginBottom:'14px' }}>
           <h2 style={{ fontSize:'14px', fontWeight:'500', marginBottom:'14px' }}>Informacion del producto</h2>
-
           <div style={{ marginBottom:'14px' }}>
-            <label style={{ fontSize:'12px', color:'#666' }}>Titulo <span style={{ color:'red' }}>*</span></label>
-            <input name='titulo' value={form.titulo} onChange={handleChange} placeholder='Ej: Laptop Dell XPS 13 — como nueva' style={campo} />
+            <label style={{ fontSize:'12px', color:'#666' }}>Titulo *</label>
+            <input name='titulo' value={form.titulo} onChange={handleChange} placeholder='Ej: Laptop Dell XPS 13' style={campo} />
           </div>
-
           <div style={{ marginBottom:'14px' }}>
             <label style={{ fontSize:'12px', color:'#666' }}>Descripcion</label>
-            <textarea name='descripcion' value={form.descripcion} onChange={handleChange} placeholder='Describe el estado, que incluye, por que lo vendes...' style={{ ...campo, height:'80px', resize:'vertical' }} />
+            <textarea name='descripcion' value={form.descripcion} onChange={handleChange} placeholder='Describe el estado, que incluye...' style={{ ...campo, height:'80px', resize:'vertical' }} />
           </div>
-
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px', marginBottom:'14px' }}>
             <div>
-              <label style={{ fontSize:'12px', color:'#666' }}>Categoria <span style={{ color:'red' }}>*</span></label>
+              <label style={{ fontSize:'12px', color:'#666' }}>Categoria *</label>
               <select name='categoria' value={form.categoria} onChange={handleChange} style={campo}>
                 <option value=''>Selecciona</option>
                 <option>Electronica</option>
@@ -116,19 +136,16 @@ export default function NuevoRemate() {
               </select>
             </div>
           </div>
-
           <div>
             <label style={{ fontSize:'12px', color:'#666' }}>Ubicacion</label>
             <input name='ubicacion' value={form.ubicacion} onChange={handleChange} placeholder='Ej: Lima, Miraflores' style={campo} />
           </div>
         </div>
-
         <div style={{ background:'#fff', border:'1px solid #eee', borderRadius:'12px', padding:'20px', marginBottom:'14px' }}>
           <h2 style={{ fontSize:'14px', fontWeight:'500', marginBottom:'14px' }}>Configuracion de la subasta</h2>
-
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px', marginBottom:'14px' }}>
             <div>
-              <label style={{ fontSize:'12px', color:'#666' }}>Precio inicial (S/) <span style={{ color:'red' }}>*</span></label>
+              <label style={{ fontSize:'12px', color:'#666' }}>Precio inicial (S/) *</label>
               <input name='precio_inicial' type='number' value={form.precio_inicial} onChange={handleChange} placeholder='500' style={campo} />
             </div>
             <div>
@@ -136,10 +153,9 @@ export default function NuevoRemate() {
               <input name='incremento_minimo' type='number' value={form.incremento_minimo} onChange={handleChange} placeholder='20' style={campo} />
             </div>
           </div>
-
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px' }}>
             <div>
-              <label style={{ fontSize:'12px', color:'#666' }}>Precio de compra directa (opcional)</label>
+              <label style={{ fontSize:'12px', color:'#666' }}>Compra directa (opcional)</label>
               <input name='precio_directo' type='number' value={form.precio_directo} onChange={handleChange} placeholder='3500' style={campo} />
             </div>
             <div>
@@ -153,11 +169,9 @@ export default function NuevoRemate() {
             </div>
           </div>
         </div>
-
         <button onClick={publicar} disabled={cargando} style={{ width:'100%', padding:'12px', background: cargando ? '#9FE1CB' : '#1D9E75', color:'white', border:'none', borderRadius:'8px', fontSize:'15px', fontWeight:'500', cursor:'pointer' }}>
           {cargando ? 'Publicando...' : 'Publicar remate'}
         </button>
-
       </div>
     </main>
   )

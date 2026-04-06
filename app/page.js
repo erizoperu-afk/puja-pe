@@ -27,9 +27,13 @@ export default async function Home() {
         <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(220px, 1fr))', gap:'16px' }}>
           {remates?.map((remate) => (
             <a key={remate.id} href={'/remate/' + remate.id} style={{ background:'#fff', border:'1px solid #eee', borderRadius:'12px', overflow:'hidden', textDecoration:'none', color:'black', display:'block' }}>
-              <div style={{ height:'140px', background:'#f5f5f5', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                <div style={{ width:'60px', height:'60px', background:'#e0e0e0', borderRadius:'8px' }}></div>
-              </div>
+              <div style={{ height:'140px', background:'#f5f5f5', display:'flex', alignItems:'center', justifyContent:'center', overflow:'hidden' }}>
+  {remate.imagen_url ? (
+    <img src={remate.imagen_url} alt={remate.titulo} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+  ) : (
+    <div style={{ width:'60px', height:'60px', background:'#e0e0e0', borderRadius:'8px' }}></div>
+  )}
+</div>
               <div style={{ padding:'12px' }}>
                 <p style={{ fontWeight:'500', fontSize:'14px', marginBottom:'4px' }}>{remate.titulo}</p>
                 <p style={{ fontSize:'11px', color:'#999', marginBottom:'6px' }}>{remate.categoria}</p>
