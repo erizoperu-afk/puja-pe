@@ -21,37 +21,49 @@ export default function NuevoRemate() {
   const [cargando, setCargando] = useState(false)
   const [mensaje, setMensaje] = useState('')
   const [error, setError] = useState('')
+  const [errores, setErrores] = useState({})
 
   function handleChange(e) {
     setForm({ ...form, [e.target.name]: e.target.value })
+    if (errores[e.target.name]) {
+      setErrores({ ...errores, [e.target.name]: '' })
+    }
+  }
+
+  function validar() {
+    const nuevosErrores = {}
+    if (!form.titulo.trim()) nuevosErrores.titulo = 'El título es obligatorio.'
+    if (!form.categoria) nuevosErrores.categoria = 'La categoría es obligatoria.'
+    if (!form.precio_inicial) nuevosErrores.precio_inicial = 'El precio inicial es obligatorio.'
+    if (fotos.length === 0) nuevosErrores.fotos = 'Agrega al menos 1 foto.'
+    setErrores(nuevosErrores)
+    return Object.keys(nuevosErrores).length === 0
   }
 
   async function publicar() {
-    setCargando(true)
     setError('')
     setMensaje('')
-    if (!form.titulo || !form.precio_inicial || !form.categoria || fotos.length === 0) {
-      setError('Completa los campos obligatorios y agrega al menos 1 foto.')
-      setCargando(false)
-      return
-    }
+    if (!validar()) return
+    setCargando(true)
     const { data: { session } } = await supabase.auth.getSession()
     if (!session) { setError('Debes ingresar para publicar.'); setCargando(false); return }
     const fechaFin = new Date()
     fechaFin.setDate(fechaFin.getDate() + Number(form.duracion))
     let imagen_url = null
-    if (fotos.length > 0) {
-      const nombreArchivo = session.user.id + '_' + Date.now() + '_' + fotos[0].name
+    let imagenes_url = []
+    for (let i = 0; i < fotos.length; i++) {
+      const nombreArchivo = session.user.id + '_' + Date.now() + '_' + i + '_' + fotos[i].name
       const { error: uploadError } = await supabase.storage
         .from('fotos-remates')
-        .upload(nombreArchivo, fotos[0])
+        .upload(nombreArchivo, fotos[i])
       if (!uploadError) {
         const { data: urlData } = supabase.storage
           .from('fotos-remates')
           .getPublicUrl(nombreArchivo)
-        imagen_url = urlData.publicUrl
+        imagenes_url.push(urlData.publicUrl)
       }
     }
+    if (imagenes_url.length > 0) imagen_url = imagenes_url[0]
     const { error: err } = await supabase.from('remates').insert({
       titulo: form.titulo,
       descripcion: form.descripcion,
@@ -66,6 +78,7 @@ export default function NuevoRemate() {
       fecha_fin: fechaFin.toISOString(),
       activo: true,
       imagen_url: imagen_url,
+      imagenes_url: imagenes_url,
     })
     if (err) { setError('Error al publicar: ' + err.message); setCargando(false); return }
     setMensaje('Remate publicado exitosamente!')
@@ -74,6 +87,8 @@ export default function NuevoRemate() {
   }
 
   const campo = { width:'100%', padding:'10px 12px', borderRadius:'8px', border:'1px solid #ddd', fontSize:'14px', marginTop:'5px', boxSizing:'border-box' }
+  const campoError = { ...campo, border:'1px solid #E24B4A' }
+  const textoError = { fontSize:'12px', color:'#A32D2D', marginTop:'4px' }
 
   return (
     <main style={{ fontFamily:'sans-serif', background:'#f9f9f9', minHeight:'100vh' }}>
@@ -86,7 +101,8 @@ export default function NuevoRemate() {
         {error && <div style={{ background:'#FCEBEB', color:'#A32D2D', padding:'10px 14px', borderRadius:'8px', fontSize:'13px', marginBottom:'14px' }}>{error}</div>}
         {mensaje && <div style={{ background:'#E1F5EE', color:'#085041', padding:'10px 14px', borderRadius:'8px', fontSize:'13px', marginBottom:'14px' }}>{mensaje}</div>}
 
-        <div style={{ background:'#fff', border:'1px solid #eee', borderRadius:'12px', padding:'20px', marginBottom:'14px' }}>
+        {/* FOTOS */}
+        <div style={{ background:'#fff', border: errores.fotos ? '1px solid #E24B4A' : '1px solid #eee', borderRadius:'12px', padding:'20px', marginBottom:'14px' }}>
           <h2 style={{ fontSize:'14px', fontWeight:'500', marginBottom:'4px' }}>Fotos del producto</h2>
           <p style={{ fontSize:'12px', color:'#999', marginBottom:'12px' }}>Minimo 1, maximo 3 fotos</p>
           <div style={{ display:'flex', gap:'10px', flexWrap:'wrap' }}>
@@ -108,18 +124,21 @@ export default function NuevoRemate() {
                   if (!archivo || fotos.length >= 3) return
                   setFotos([...fotos, archivo])
                   setFotosUrl([...fotosUrl, URL.createObjectURL(archivo)])
+                  if (errores.fotos) setErrores({ ...errores, fotos: '' })
                 }} />
               </label>
             )}
           </div>
-          {fotos.length === 0 && <p style={{ fontSize:'12px', color:'#A32D2D', marginTop:'10px' }}>Agrega al menos 1 foto.</p>}
+          {errores.fotos && <p style={textoError}>{errores.fotos}</p>}
         </div>
 
+        {/* INFO PRODUCTO */}
         <div style={{ background:'#fff', border:'1px solid #eee', borderRadius:'12px', padding:'20px', marginBottom:'14px' }}>
           <h2 style={{ fontSize:'14px', fontWeight:'500', marginBottom:'14px' }}>Informacion del producto</h2>
           <div style={{ marginBottom:'14px' }}>
-            <label style={{ fontSize:'12px', color:'#666' }}>Titulo *</label>
-            <input name='titulo' value={form.titulo} onChange={handleChange} placeholder='Ej: Laptop Dell XPS 13' style={campo} />
+            <label style={{ fontSize:'12px', color: errores.titulo ? '#A32D2D' : '#666' }}>Titulo *</label>
+            <input name='titulo' value={form.titulo} onChange={handleChange} placeholder='Ej: Laptop Dell XPS 13' style={errores.titulo ? campoError : campo} />
+            {errores.titulo && <p style={textoError}>{errores.titulo}</p>}
           </div>
           <div style={{ marginBottom:'14px' }}>
             <label style={{ fontSize:'12px', color:'#666' }}>Descripcion</label>
@@ -127,8 +146,8 @@ export default function NuevoRemate() {
           </div>
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px', marginBottom:'14px' }}>
             <div>
-              <label style={{ fontSize:'12px', color:'#666' }}>Categoria *</label>
-              <select name='categoria' value={form.categoria} onChange={handleChange} style={campo}>
+              <label style={{ fontSize:'12px', color: errores.categoria ? '#A32D2D' : '#666' }}>Categoria *</label>
+              <select name='categoria' value={form.categoria} onChange={handleChange} style={errores.categoria ? campoError : campo}>
                 <option value=''>Selecciona</option>
                 <option>Electronica</option>
                 <option>Vehiculos</option>
@@ -139,6 +158,7 @@ export default function NuevoRemate() {
                 <option>Arte</option>
                 <option>Otros</option>
               </select>
+              {errores.categoria && <p style={textoError}>{errores.categoria}</p>}
             </div>
             <div>
               <label style={{ fontSize:'12px', color:'#666' }}>Condicion</label>
@@ -156,12 +176,14 @@ export default function NuevoRemate() {
           </div>
         </div>
 
+        {/* SUBASTA */}
         <div style={{ background:'#fff', border:'1px solid #eee', borderRadius:'12px', padding:'20px', marginBottom:'14px' }}>
           <h2 style={{ fontSize:'14px', fontWeight:'500', marginBottom:'14px' }}>Configuracion de la subasta</h2>
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px', marginBottom:'14px' }}>
             <div>
-              <label style={{ fontSize:'12px', color:'#666' }}>Precio inicial (S/) *</label>
-              <input name='precio_inicial' type='number' value={form.precio_inicial} onChange={handleChange} placeholder='500' style={campo} />
+              <label style={{ fontSize:'12px', color: errores.precio_inicial ? '#A32D2D' : '#666' }}>Precio inicial (S/) *</label>
+              <input name='precio_inicial' type='number' value={form.precio_inicial} onChange={handleChange} placeholder='500' style={errores.precio_inicial ? campoError : campo} />
+              {errores.precio_inicial && <p style={textoError}>{errores.precio_inicial}</p>}
             </div>
             <div>
               <label style={{ fontSize:'12px', color:'#666' }}>Incremento minimo (S/)</label>
