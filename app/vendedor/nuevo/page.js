@@ -16,8 +16,8 @@ export default function NuevoRemate() {
     categoria: '', condicion: 'Como nuevo',
     ubicacion: '', duracion: '3'
   })
-  const [foto, setFoto] = useState(null)
-  const [fotoUrl, setFotoUrl] = useState('')
+  const [fotos, setFotos] = useState([])
+  const [fotosUrl, setFotosUrl] = useState([])
   const [cargando, setCargando] = useState(false)
   const [mensaje, setMensaje] = useState('')
   const [error, setError] = useState('')
@@ -30,8 +30,8 @@ export default function NuevoRemate() {
     setCargando(true)
     setError('')
     setMensaje('')
-    if (!form.titulo || !form.precio_inicial || !form.categoria) {
-      setError('Completa los campos obligatorios.')
+    if (!form.titulo || !form.precio_inicial || !form.categoria || fotos.length === 0) {
+      setError('Completa los campos obligatorios y agrega al menos 1 foto.')
       setCargando(false)
       return
     }
@@ -40,11 +40,11 @@ export default function NuevoRemate() {
     const fechaFin = new Date()
     fechaFin.setDate(fechaFin.getDate() + Number(form.duracion))
     let imagen_url = null
-    if (foto) {
-      const nombreArchivo = session.user.id + '_' + Date.now() + '_' + foto.name
+    if (fotos.length > 0) {
+      const nombreArchivo = session.user.id + '_' + Date.now() + '_' + fotos[0].name
       const { error: uploadError } = await supabase.storage
         .from('fotos-remates')
-        .upload(nombreArchivo, foto)
+        .upload(nombreArchivo, fotos[0])
       if (!uploadError) {
         const { data: urlData } = supabase.storage
           .from('fotos-remates')
@@ -85,22 +85,36 @@ export default function NuevoRemate() {
         </div>
         {error && <div style={{ background:'#FCEBEB', color:'#A32D2D', padding:'10px 14px', borderRadius:'8px', fontSize:'13px', marginBottom:'14px' }}>{error}</div>}
         {mensaje && <div style={{ background:'#E1F5EE', color:'#085041', padding:'10px 14px', borderRadius:'8px', fontSize:'13px', marginBottom:'14px' }}>{mensaje}</div>}
+
         <div style={{ background:'#fff', border:'1px solid #eee', borderRadius:'12px', padding:'20px', marginBottom:'14px' }}>
-          <h2 style={{ fontSize:'14px', fontWeight:'500', marginBottom:'14px' }}>Foto del producto</h2>
-          <div style={{ border:'1px dashed #ddd', borderRadius:'8px', padding:'20px', textAlign:'center', background:'#f9f9f9' }}>
-            {fotoUrl ? (
-              <img src={fotoUrl} alt='preview' style={{ width:'100%', maxHeight:'200px', objectFit:'cover', borderRadius:'8px', marginBottom:'10px' }} />
-            ) : (
-              <p style={{ color:'#999', fontSize:'13px', marginBottom:'10px' }}>Sube una foto de tu producto</p>
+          <h2 style={{ fontSize:'14px', fontWeight:'500', marginBottom:'4px' }}>Fotos del producto</h2>
+          <p style={{ fontSize:'12px', color:'#999', marginBottom:'12px' }}>Minimo 1, maximo 3 fotos</p>
+          <div style={{ display:'flex', gap:'10px', flexWrap:'wrap' }}>
+            {fotosUrl.map((url, i) => (
+              <div key={i} style={{ position:'relative' }}>
+                <img src={url} alt='foto' style={{ width:'100px', height:'100px', objectFit:'cover', borderRadius:'8px', border:'1px solid #eee' }} />
+                <button onClick={() => {
+                  setFotos(fotos.filter((_, j) => j !== i))
+                  setFotosUrl(fotosUrl.filter((_, j) => j !== i))
+                }} style={{ position:'absolute', top:'-8px', right:'-8px', width:'22px', height:'22px', borderRadius:'50%', background:'#E24B4A', color:'white', border:'none', cursor:'pointer', fontSize:'12px' }}>x</button>
+              </div>
+            ))}
+            {fotos.length < 3 && (
+              <label style={{ width:'100px', height:'100px', border:'1px dashed #ddd', borderRadius:'8px', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', cursor:'pointer', background:'#f9f9f9', fontSize:'12px', color:'#999' }}>
+                <span style={{ fontSize:'24px', marginBottom:'4px' }}>+</span>
+                Agregar
+                <input type='file' accept='image/*' style={{ display:'none' }} onChange={(e) => {
+                  const archivo = e.target.files[0]
+                  if (!archivo || fotos.length >= 3) return
+                  setFotos([...fotos, archivo])
+                  setFotosUrl([...fotosUrl, URL.createObjectURL(archivo)])
+                }} />
+              </label>
             )}
-            <input type='file' accept='image/*' onChange={(e) => {
-              const archivo = e.target.files[0]
-              if (!archivo) return
-              setFoto(archivo)
-              setFotoUrl(URL.createObjectURL(archivo))
-            }} style={{ fontSize:'13px' }} />
           </div>
+          {fotos.length === 0 && <p style={{ fontSize:'12px', color:'#A32D2D', marginTop:'10px' }}>Agrega al menos 1 foto.</p>}
         </div>
+
         <div style={{ background:'#fff', border:'1px solid #eee', borderRadius:'12px', padding:'20px', marginBottom:'14px' }}>
           <h2 style={{ fontSize:'14px', fontWeight:'500', marginBottom:'14px' }}>Informacion del producto</h2>
           <div style={{ marginBottom:'14px' }}>
@@ -141,6 +155,7 @@ export default function NuevoRemate() {
             <input name='ubicacion' value={form.ubicacion} onChange={handleChange} placeholder='Ej: Lima, Miraflores' style={campo} />
           </div>
         </div>
+
         <div style={{ background:'#fff', border:'1px solid #eee', borderRadius:'12px', padding:'20px', marginBottom:'14px' }}>
           <h2 style={{ fontSize:'14px', fontWeight:'500', marginBottom:'14px' }}>Configuracion de la subasta</h2>
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px', marginBottom:'14px' }}>
@@ -169,6 +184,7 @@ export default function NuevoRemate() {
             </div>
           </div>
         </div>
+
         <button onClick={publicar} disabled={cargando} style={{ width:'100%', padding:'12px', background: cargando ? '#9FE1CB' : '#1D9E75', color:'white', border:'none', borderRadius:'8px', fontSize:'15px', fontWeight:'500', cursor:'pointer' }}>
           {cargando ? 'Publicando...' : 'Publicar remate'}
         </button>
