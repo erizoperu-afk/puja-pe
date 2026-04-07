@@ -4,35 +4,6 @@ import { useState, useEffect } from 'react'
 import { supabase } from './supabase'
 import Navbar from './Navbar'
 
-export default function Home() {
-  const [remates, setRemates] = useState([])
-  const [busqueda, setBusqueda] = useState('')
-  const [cargando, setCargando] = useState(true)
-
-  useEffect(() => {
-    async function cargarRemates() {
-      const { data } = await supabase
-        .from('remates')
-        .select('*')
-        .eq('activo', true)
-        .order('created_at', { ascending: false })
-      setRemates(data || [])
-      setCargando(false)
-    }
-    cargarRemates()
-  }, [])
-
-  const rematesFiltrados = remates.filter(r =>
-    r.titulo?.toLowerCase().includes(busqueda.toLowerCase()) ||
-    r.categoria?.toLowerCase().includes(busqueda.toLowerCase())
-  )
-
-'use client'
-
-import { useState, useEffect } from 'react'
-import { supabase } from './supabase'
-import Navbar from './Navbar'
-
 const CATEGORIAS = ['Electronica','Vehiculos','Hogar','Ropa','Deportes','Inmuebles','Arte','Otros']
 
 export default function Home() {
@@ -62,14 +33,11 @@ export default function Home() {
     <main style={{ fontFamily:'sans-serif' }}>
       <Navbar />
 
-      {/* BARRA DE CATEGORÍAS */}
       <div style={{ background:'#fff', borderBottom:'1px solid #eee', padding:'0 24px', overflowX:'auto' }}>
         <div style={{ display:'flex', gap:'4px', maxWidth:'1200px', margin:'0 auto' }}>
           {CATEGORIAS.map(cat => (
             <a key={cat} href={'/categoria/' + cat}
-              style={{ padding:'12px 16px', fontSize:'13px', textDecoration:'none', whiteSpace:'nowrap', borderBottom:'2px solid transparent', color:'#666' }}
-              onMouseEnter={e => { e.target.style.color='#1D9E75'; e.target.style.borderBottom='2px solid #1D9E75' }}
-              onMouseLeave={e => { e.target.style.color='#666'; e.target.style.borderBottom='2px solid transparent' }}>
+              style={{ padding:'12px 16px', fontSize:'13px', textDecoration:'none', whiteSpace:'nowrap', borderBottom:'2px solid transparent', color:'#666', fontWeight:'400' }}>
               {cat}
             </a>
           ))}
