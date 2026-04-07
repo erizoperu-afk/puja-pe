@@ -1,12 +1,5 @@
-import { createClient } from '@supabase/supabase-js'
-import { cookies } from 'next/headers'
+import { supabase } from '../supabase'
 import Navbar from '../Navbar'
-import Link from 'next/link'
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-)
 
 export default async function PanelVendedor() {
   const { data: remates } = await supabase
@@ -18,14 +11,10 @@ export default async function PanelVendedor() {
     <main style={{ fontFamily:'sans-serif' }}>
       <Navbar />
       <div style={{ maxWidth:'900px', margin:'0 auto', padding:'24px' }}>
-
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'24px' }}>
           <h1 style={{ fontSize:'22px', fontWeight:'500' }}>Mi panel</h1>
-          <a href='/vendedor/nuevo' style={{ padding:'9px 18px', background:'#1D9E75', color:'white', borderRadius:'8px', textDecoration:'none', fontSize:'14px', fontWeight:'500' }}>
-            + Publicar remate
-          </a>
+          <a href='/vendedor/nuevo' style={{ padding:'9px 18px', background:'#1D9E75', color:'white', borderRadius:'8px', textDecoration:'none', fontSize:'14px', fontWeight:'500' }}>+ Publicar remate</a>
         </div>
-
         <div style={{ display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:'12px', marginBottom:'28px' }}>
           {[
             ['Remates activos', remates?.filter(r => r.activo).length || 0],
@@ -38,18 +27,15 @@ export default async function PanelVendedor() {
             </div>
           ))}
         </div>
-
         <h2 style={{ fontSize:'15px', fontWeight:'500', marginBottom:'14px' }}>Mis remates</h2>
-
         {remates?.length === 0 && (
-          <div style={{ textAlign:'center', padding:'40px', background:'#f9f9f9', borderRadius:'12px', color:'#999' }}>
-            No tienes remates publicados aun.
-          </div>
+          <div style={{ textAlign:'center', padding:'40px', background:'#f9f9f9', borderRadius:'12px', color:'#999' }}>No tienes remates publicados aun.</div>
         )}
-
         {remates?.map((remate) => (
           <div key={remate.id} style={{ background:'#fff', border:'1px solid #eee', borderRadius:'12px', padding:'16px', marginBottom:'10px', display:'flex', alignItems:'center', gap:'16px' }}>
-            <div style={{ width:'56px', height:'56px', background:'#f5f5f5', borderRadius:'8px', border:'1px solid #eee', flexShrink:0 }}></div>
+            <div style={{ width:'56px', height:'56px', background:'#f5f5f5', borderRadius:'8px', border:'1px solid #eee', flexShrink:0, overflow:'hidden' }}>
+              {remate.imagen_url && <img src={remate.imagen_url} alt='' style={{ width:'100%', height:'100%', objectFit:'cover' }} />}
+            </div>
             <div style={{ flex:1 }}>
               <p style={{ fontWeight:'500', fontSize:'14px', marginBottom:'3px' }}>{remate.titulo}</p>
               <p style={{ fontSize:'12px', color:'#999' }}>{remate.categoria} · {remate.ubicacion}</p>
@@ -60,12 +46,9 @@ export default async function PanelVendedor() {
                 {remate.activo ? 'Activo' : 'Finalizado'}
               </span>
             </div>
-            <a href={'/remate/' + remate.id} style={{ fontSize:'12px', color:'#1D9E75', textDecoration:'none', padding:'6px 12px', border:'1px solid #1D9E75', borderRadius:'8px' }}>
-              Ver
-            </a>
+            <a href={'/remate/' + remate.id} style={{ fontSize:'12px', color:'#1D9E75', textDecoration:'none', padding:'6px 12px', border:'1px solid #1D9E75', borderRadius:'8px' }}>Ver</a>
           </div>
         ))}
-
       </div>
     </main>
   )

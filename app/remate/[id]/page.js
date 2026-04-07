@@ -1,11 +1,7 @@
-import { createClient } from '@supabase/supabase-js'
+import { supabase } from '../../supabase'
 import Navbar from '../../Navbar'
 import PujaBox from './PujaBox'
 import GaleriaFotos from './galeriaFotos'
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-)
 
 export default async function PaginaRemate({ params }) {
   const { id } = await params
@@ -16,9 +12,7 @@ export default async function PaginaRemate({ params }) {
     .single()
 
   if (!remate) return (
-    <div style={{ padding:'40px', fontFamily:'sans-serif' }}>
-      Remate no encontrado.
-    </div>
+    <div style={{ padding:'40px', fontFamily:'sans-serif' }}>Remate no encontrado.</div>
   )
 
   return (
@@ -29,10 +23,7 @@ export default async function PaginaRemate({ params }) {
           <p style={{ fontSize:'12px', color:'#999', marginBottom:'12px' }}>
             <a href='/' style={{ color:'#1D9E75', textDecoration:'none' }}>Inicio</a> › {remate.categoria} › {remate.titulo}
           </p>
-         <GaleriaFotos
-  imagenes={remate.imagenes_url || (remate.imagen_url ? [remate.imagen_url] : [])}
-  titulo={remate.titulo}
-/>
+          <GaleriaFotos imagenes={remate.imagenes_url || (remate.imagen_url ? [remate.imagen_url] : [])} titulo={remate.titulo} />
           <div style={{ background:'#fff', border:'1px solid #eee', borderRadius:'12px', padding:'20px', marginBottom:'16px' }}>
             <h2 style={{ fontSize:'15px', fontWeight:'500', marginBottom:'12px' }}>Descripcion</h2>
             <p style={{ fontSize:'14px', color:'#555', lineHeight:'1.7' }}>{remate.descripcion}</p>
@@ -52,9 +43,7 @@ export default async function PaginaRemate({ params }) {
             ))}
           </div>
         </div>
-        <div>
-          <PujaBox remate={remate} />
-        </div>
+        <div><PujaBox remate={remate} /></div>
       </div>
     </main>
   )
