@@ -7,8 +7,8 @@ export default function Login() {
   const [tab, setTab] = useState('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [nombre, setNombre] = useState('')
   const [nickname, setNickname] = useState('')
-  const [rol, setRol] = useState('comprador')
   const [mensaje, setMensaje] = useState('')
   const [error, setError] = useState('')
   const [cargando, setCargando] = useState(false)
@@ -16,12 +16,11 @@ export default function Login() {
   async function handleLogin() {
     setCargando(true)
     setError('')
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+    const { error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) {
       setError('Correo o contraseña incorrectos.')
     } else {
-      const rolUsuario = data.user?.user_metadata?.rol || 'comprador'
-      window.location.href = rolUsuario === 'vendedor' ? '/vendedor' : '/comprador'
+      window.location.href = '/'
     }
     setCargando(false)
   }
@@ -29,14 +28,15 @@ export default function Login() {
   async function handleRegistro() {
     setCargando(true)
     setError('')
+    if (!nickname.trim()) { setError('El nickname es obligatorio.'); setCargando(false); return }
     const { error } = await supabase.auth.signUp({
       email, password,
-      options: { data: { nombre, nickname, rol } }
+      options: { data: { nombre, nickname } }
     })
     if (error) {
       setError('Error al crear cuenta: ' + error.message)
     } else {
-      setMensaje('¡Cuenta creada! Revisa tu correo para confirmar.')
+      setMensaje('¡Cuenta creada! Ya puedes ingresar.')
     }
     setCargando(false)
   }
@@ -64,20 +64,13 @@ export default function Login() {
           {mensaje && <div style={{ background:'#E1F5EE', color:'#085041', padding:'10px 14px', borderRadius:'8px', fontSize:'13px', marginBottom:'14px' }}>{mensaje}</div>}
           {tab === 'registro' && (
             <>
-          <div style={{ marginBottom:'14px' }}>
-  <label style={{ fontSize:'12px', color:'#666', display:'block', marginBottom:'5px' }}>Nombre completo</label>
-  <input type="text" placeholder="Carlos Mamani" value={nombre} onChange={e => setNombre(e.target.value)} style={campo} />
-</div>
-<div style={{ marginBottom:'14px' }}>
-  <label style={{ fontSize:'12px', color:'#666', display:'block', marginBottom:'5px' }}>Nickname *</label>
-  <input type="text" placeholder="Ej: coleccionista99" value={nickname} onChange={e => setNickname(e.target.value)} style={campo} />
-</div>
               <div style={{ marginBottom:'14px' }}>
-                <label style={{ fontSize:'12px', color:'#666', display:'block', marginBottom:'8px' }}>¿Cómo usarás Puja.pe?</label>
-                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'8px' }}>
-                  <button onClick={() => setRol('comprador')} style={{ padding:'12px 8px', borderRadius:'8px', border: rol === 'comprador' ? '2px solid #1D9E75' : '1px solid #ddd', background: rol === 'comprador' ? '#E1F5EE' : '#fff', cursor:'pointer', fontSize:'13px', fontWeight:'500', color: rol === 'comprador' ? '#085041' : '#666' }}>Quiero comprar</button>
-                  <button onClick={() => setRol('vendedor')} style={{ padding:'12px 8px', borderRadius:'8px', border: rol === 'vendedor' ? '2px solid #1D9E75' : '1px solid #ddd', background: rol === 'vendedor' ? '#E1F5EE' : '#fff', cursor:'pointer', fontSize:'13px', fontWeight:'500', color: rol === 'vendedor' ? '#085041' : '#666' }}>Quiero vender</button>
-                </div>
+                <label style={{ fontSize:'12px', color:'#666', display:'block', marginBottom:'5px' }}>Nombre completo</label>
+                <input type="text" placeholder="Carlos Mamani" value={nombre} onChange={e => setNombre(e.target.value)} style={campo} />
+              </div>
+              <div style={{ marginBottom:'14px' }}>
+                <label style={{ fontSize:'12px', color:'#666', display:'block', marginBottom:'5px' }}>Nickname *</label>
+                <input type="text" placeholder="Ej: coleccionista99" value={nickname} onChange={e => setNickname(e.target.value)} style={campo} />
               </div>
             </>
           )}
