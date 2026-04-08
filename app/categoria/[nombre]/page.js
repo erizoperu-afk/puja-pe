@@ -4,8 +4,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../../supabase'
 import Navbar from '../../Navbar'
 
-const CATEGORIAS = ['Numismatica','Filatelia','Coleccionables','Antiguedades','Relojes','Juguetes','Electronica','Ropa y accesorios','Otros']
-export default function PaginaCategoria({ params }) {
+const CATEGORIAS = ['Antiguedades','Coleccionables','Electronica','Filatelia','Juguetes','Numismatica','Relojes','Ropa y accesorios','Otros']export default function PaginaCategoria({ params }) {
   const [remates, setRemates] = useState([])
   const [cargando, setCargando] = useState(true)
   const nombre = params.nombre
