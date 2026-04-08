@@ -56,7 +56,7 @@ export default function PujaBox({ remate }) {
     if (monto < minimo) { setError('Tu puja debe ser mayor a S/ ' + minimo); setCargando(false); return }
     const { error: errPuja } = await supabase
       .from('pujas')
-      .insert({ remate_id: remate.id, comprador_id: session.user.id, monto })
+      .insert({ remate_id: remate.id, usuario_id: session.user.id, monto })
     if (errPuja) { setError('Error al registrar puja: ' + errPuja.message); setCargando(false); return }
     await supabase.from('remates').update({ precio_actual: monto }).eq('id', remate.id)
     setPrecio(monto)
