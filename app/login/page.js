@@ -12,6 +12,7 @@ export default function Login() {
   const [mensaje, setMensaje] = useState('')
   const [error, setError] = useState('')
   const [cargando, setCargando] = useState(false)
+  const [cuentaCreada, setCuentaCreada] = useState(false)
 
   async function handleLogin() {
     setCargando(true)
@@ -29,6 +30,8 @@ export default function Login() {
     setCargando(true)
     setError('')
     if (!nickname.trim()) { setError('El nickname es obligatorio.'); setCargando(false); return }
+    if (!email.trim()) { setError('El correo es obligatorio.'); setCargando(false); return }
+    if (password.length < 6) { setError('La contraseña debe tener mínimo 6 caracteres.'); setCargando(false); return }
     const { error } = await supabase.auth.signUp({
       email, password,
       options: { data: { nombre, nickname } }
@@ -36,7 +39,10 @@ export default function Login() {
     if (error) {
       setError('Error al crear cuenta: ' + error.message)
     } else {
-      setMensaje('¡Cuenta creada! Ya puedes ingresar.')
+      setCuentaCreada(true)
+      setNombre('')
+      setNickname('')
+      setPassword('')
     }
     setCargando(false)
   }
@@ -52,46 +58,78 @@ export default function Login() {
       </nav>
       <div style={{ display:'flex', alignItems:'center', justifyContent:'center', padding:'48px 20px' }}>
         <div style={{ background:'#fff', border:'1px solid #eee', borderRadius:'16px', padding:'32px', width:'100%', maxWidth:'380px' }}>
-          <div style={{ display:'flex', borderBottom:'1px solid #eee', marginBottom:'24px' }}>
-            {['login','registro'].map(t => (
-              <button key={t} onClick={() => { setTab(t); setError(''); setMensaje(''); }}
-                style={{ flex:1, padding:'10px', border:'none', background:'transparent', fontWeight:'500', fontSize:'14px', cursor:'pointer', color: tab === t ? '#1D9E75' : '#999', borderBottom: tab === t ? '2px solid #1D9E75' : '2px solid transparent' }}>
-                {t === 'login' ? 'Ingresar' : 'Crear cuenta'}
+
+          {/* PANTALLA DE CUENTA CREADA */}
+          {cuentaCreada ? (
+            <div style={{ textAlign:'center' }}>
+              <div style={{ width:'56px', height:'56px', borderRadius:'50%', background:'#E1F5EE', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 16px', fontSize:'24px' }}>✓</div>
+              <h2 style={{ fontSize:'18px', fontWeight:'500', marginBottom:'8px' }}>¡Cuenta creada!</h2>
+              <p style={{ fontSize:'14px', color:'#666', marginBottom:'24px' }}>Ahora ingresa con tu correo y contraseña para empezar.</p>
+              <div style={{ marginBottom:'14px', textAlign:'left' }}>
+                <label style={{ fontSize:'12px', color:'#666', display:'block', marginBottom:'5px' }}>Correo electrónico</label>
+                <input type="email" value={email} onChange={e => setEmail(e.target.value)} style={campo} />
+              </div>
+              <div style={{ marginBottom:'20px', textAlign:'left' }}>
+                <label style={{ fontSize:'12px', color:'#666', display:'block', marginBottom:'5px' }}>Contraseña</label>
+                <input type="password" placeholder="Tu contraseña" value={password} onChange={e => setPassword(e.target.value)} style={campo} />
+              </div>
+              {error && <div style={{ background:'#FCEBEB', color:'#A32D2D', padding:'10px 14px', borderRadius:'8px', fontSize:'13px', marginBottom:'14px' }}>{error}</div>}
+              <button onClick={handleLogin} disabled={cargando}
+                style={{ width:'100%', padding:'11px', borderRadius:'8px', border:'none', background: cargando ? '#9FE1CB' : '#1D9E75', color:'white', fontSize:'15px', fontWeight:'500', cursor:'pointer' }}>
+                {cargando ? 'Ingresando...' : 'Ingresar ahora'}
               </button>
-            ))}
-          </div>
-          {error && <div style={{ background:'#FCEBEB', color:'#A32D2D', padding:'10px 14px', borderRadius:'8px', fontSize:'13px', marginBottom:'14px' }}>{error}</div>}
-          {mensaje && <div style={{ background:'#E1F5EE', color:'#085041', padding:'10px 14px', borderRadius:'8px', fontSize:'13px', marginBottom:'14px' }}>{mensaje}</div>}
-          {tab === 'registro' && (
+            </div>
+          ) : (
             <>
-              <div style={{ marginBottom:'14px' }}>
-                <label style={{ fontSize:'12px', color:'#666', display:'block', marginBottom:'5px' }}>Nombre completo</label>
-                <input type="text" placeholder="Carlos Mamani" value={nombre} onChange={e => setNombre(e.target.value)} style={campo} />
+              {/* TABS */}
+              <div style={{ display:'flex', borderBottom:'1px solid #eee', marginBottom:'24px' }}>
+                {['login','registro'].map(t => (
+                  <button key={t} onClick={() => { setTab(t); setError(''); setMensaje(''); }}
+                    style={{ flex:1, padding:'10px', border:'none', background:'transparent', fontWeight:'500', fontSize:'14px', cursor:'pointer', color: tab === t ? '#1D9E75' : '#999', borderBottom: tab === t ? '2px solid #1D9E75' : '2px solid transparent' }}>
+                    {t === 'login' ? 'Ingresar' : 'Crear cuenta'}
+                  </button>
+                ))}
               </div>
+
+              {error && <div style={{ background:'#FCEBEB', color:'#A32D2D', padding:'10px 14px', borderRadius:'8px', fontSize:'13px', marginBottom:'14px' }}>{error}</div>}
+              {mensaje && <div style={{ background:'#E1F5EE', color:'#085041', padding:'10px 14px', borderRadius:'8px', fontSize:'13px', marginBottom:'14px' }}>{mensaje}</div>}
+
+              {tab === 'registro' && (
+                <>
+                  <div style={{ marginBottom:'14px' }}>
+                    <label style={{ fontSize:'12px', color:'#666', display:'block', marginBottom:'5px' }}>Nombre completo</label>
+                    <input type="text" placeholder="Carlos Mamani" value={nombre} onChange={e => setNombre(e.target.value)} style={campo} />
+                  </div>
+                  <div style={{ marginBottom:'14px' }}>
+                    <label style={{ fontSize:'12px', color:'#666', display:'block', marginBottom:'5px' }}>Nickname *</label>
+                    <input type="text" placeholder="Ej: coleccionista99" value={nickname} onChange={e => setNickname(e.target.value)} style={campo} />
+                  </div>
+                </>
+              )}
+
               <div style={{ marginBottom:'14px' }}>
-                <label style={{ fontSize:'12px', color:'#666', display:'block', marginBottom:'5px' }}>Nickname *</label>
-                <input type="text" placeholder="Ej: coleccionista99" value={nickname} onChange={e => setNickname(e.target.value)} style={campo} />
+                <label style={{ fontSize:'12px', color:'#666', display:'block', marginBottom:'5px' }}>Correo electrónico</label>
+                <input type="email" placeholder="tu@correo.com" value={email} onChange={e => setEmail(e.target.value)} style={campo} />
               </div>
+              <div style={{ marginBottom:'20px' }}>
+                <label style={{ fontSize:'12px', color:'#666', display:'block', marginBottom:'5px' }}>Contraseña</label>
+                <input type="password" placeholder="Mínimo 6 caracteres" value={password} onChange={e => setPassword(e.target.value)} style={campo} />
+              </div>
+
+              <button onClick={tab === 'login' ? handleLogin : handleRegistro} disabled={cargando}
+                style={{ width:'100%', padding:'11px', borderRadius:'8px', border:'none', background: cargando ? '#9FE1CB' : '#1D9E75', color:'white', fontSize:'15px', fontWeight:'500', cursor:'pointer' }}>
+                {cargando ? 'Cargando...' : tab === 'login' ? 'Ingresar' : 'Crear cuenta gratis'}
+              </button>
+
+              <p style={{ textAlign:'center', fontSize:'12px', color:'#999', marginTop:'16px' }}>
+                {tab === 'login' ? '¿No tienes cuenta? ' : '¿Ya tienes cuenta? '}
+                <span onClick={() => setTab(tab === 'login' ? 'registro' : 'login')} style={{ color:'#1D9E75', cursor:'pointer' }}>
+                  {tab === 'login' ? 'Regístrate gratis' : 'Ingresa aquí'}
+                </span>
+              </p>
             </>
           )}
-          <div style={{ marginBottom:'14px' }}>
-            <label style={{ fontSize:'12px', color:'#666', display:'block', marginBottom:'5px' }}>Correo electrónico</label>
-            <input type="email" placeholder="tu@correo.com" value={email} onChange={e => setEmail(e.target.value)} style={campo} />
-          </div>
-          <div style={{ marginBottom:'20px' }}>
-            <label style={{ fontSize:'12px', color:'#666', display:'block', marginBottom:'5px' }}>Contraseña</label>
-            <input type="password" placeholder="Mínimo 6 caracteres" value={password} onChange={e => setPassword(e.target.value)} style={campo} />
-          </div>
-          <button onClick={tab === 'login' ? handleLogin : handleRegistro} disabled={cargando}
-            style={{ width:'100%', padding:'11px', borderRadius:'8px', border:'none', background: cargando ? '#9FE1CB' : '#1D9E75', color:'white', fontSize:'15px', fontWeight:'500', cursor:'pointer' }}>
-            {cargando ? 'Cargando...' : tab === 'login' ? 'Ingresar' : 'Crear cuenta gratis'}
-          </button>
-          <p style={{ textAlign:'center', fontSize:'12px', color:'#999', marginTop:'16px' }}>
-            {tab === 'login' ? '¿No tienes cuenta? ' : '¿Ya tienes cuenta? '}
-            <span onClick={() => setTab(tab === 'login' ? 'registro' : 'login')} style={{ color:'#1D9E75', cursor:'pointer' }}>
-              {tab === 'login' ? 'Regístrate gratis' : 'Ingresa aquí'}
-            </span>
-          </p>
+
         </div>
       </div>
     </main>
