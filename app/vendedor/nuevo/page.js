@@ -114,7 +114,7 @@ export default function NuevoRemate() {
           <h2 style={{ fontSize:'14px', fontWeight:'500', marginBottom:'14px' }}>Informacion del producto</h2>
           <div style={{ marginBottom:'14px' }}>
             <label style={{ fontSize:'12px', color: errores.titulo ? '#A32D2D' : '#666' }}>Titulo *</label>
-            <input name='titulo' value={form.titulo} onChange={handleChange} placeholder='Ej: Laptop Dell XPS 13' style={errores.titulo ? campoError : campo} />
+            <input name='titulo' value={form.titulo} onChange={handleChange} placeholder='Ej: Moneda Peru 1900' style={errores.titulo ? campoError : campo} />
             {errores.titulo && <p style={textoError}>{errores.titulo}</p>}
           </div>
           <div style={{ marginBottom:'14px' }}>
@@ -126,9 +126,15 @@ export default function NuevoRemate() {
               <label style={{ fontSize:'12px', color: errores.categoria ? '#A32D2D' : '#666' }}>Categoria *</label>
               <select name='categoria' value={form.categoria} onChange={handleChange} style={errores.categoria ? campoError : campo}>
                 <option value=''>Selecciona</option>
-                <option>Electronica</option><option>Vehiculos</option><option>Hogar</option>
-                <option>Ropa</option><option>Deportes</option><option>Inmuebles</option>
-                <option>Arte</option><option>Otros</option>
+                <option>Antiguedades</option>
+                <option>Coleccionables</option>
+                <option>Electronica</option>
+                <option>Filatelia</option>
+                <option>Juguetes</option>
+                <option>Numismatica</option>
+                <option>Relojes</option>
+                <option>Ropa y accesorios</option>
+                <option>Otros</option>
               </select>
               {errores.categoria && <p style={textoError}>{errores.categoria}</p>}
             </div>
