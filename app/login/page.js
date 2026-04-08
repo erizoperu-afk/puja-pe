@@ -7,7 +7,7 @@ export default function Login() {
   const [tab, setTab] = useState('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [nombre, setNombre] = useState('')
+  const [nickname, setNickname] = useState('')
   const [rol, setRol] = useState('comprador')
   const [mensaje, setMensaje] = useState('')
   const [error, setError] = useState('')
@@ -31,7 +31,7 @@ export default function Login() {
     setError('')
     const { error } = await supabase.auth.signUp({
       email, password,
-      options: { data: { nombre, rol } }
+      options: { data: { nombre, nickname, rol } }
     })
     if (error) {
       setError('Error al crear cuenta: ' + error.message)
@@ -64,10 +64,14 @@ export default function Login() {
           {mensaje && <div style={{ background:'#E1F5EE', color:'#085041', padding:'10px 14px', borderRadius:'8px', fontSize:'13px', marginBottom:'14px' }}>{mensaje}</div>}
           {tab === 'registro' && (
             <>
-              <div style={{ marginBottom:'14px' }}>
-                <label style={{ fontSize:'12px', color:'#666', display:'block', marginBottom:'5px' }}>Nombre completo</label>
-                <input type="text" placeholder="Carlos Mamani" value={nombre} onChange={e => setNombre(e.target.value)} style={campo} />
-              </div>
+          <div style={{ marginBottom:'14px' }}>
+  <label style={{ fontSize:'12px', color:'#666', display:'block', marginBottom:'5px' }}>Nombre completo</label>
+  <input type="text" placeholder="Carlos Mamani" value={nombre} onChange={e => setNombre(e.target.value)} style={campo} />
+</div>
+<div style={{ marginBottom:'14px' }}>
+  <label style={{ fontSize:'12px', color:'#666', display:'block', marginBottom:'5px' }}>Nickname *</label>
+  <input type="text" placeholder="Ej: coleccionista99" value={nickname} onChange={e => setNickname(e.target.value)} style={campo} />
+</div>
               <div style={{ marginBottom:'14px' }}>
                 <label style={{ fontSize:'12px', color:'#666', display:'block', marginBottom:'8px' }}>¿Cómo usarás Puja.pe?</label>
                 <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'8px' }}>
