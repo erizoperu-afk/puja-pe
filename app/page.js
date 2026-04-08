@@ -4,7 +4,9 @@ import { useState, useEffect } from 'react'
 import { supabase } from './supabase'
 import Navbar from './Navbar'
 
-const CATEGORIAS = ['Antiguedades','Coleccionables','Electronica','Filatelia','Juguetes','Numismatica','Relojes','Ropa y accesorios','Otros']export default function Home() {
+const CATEGORIAS = ['Antiguedades', 'Coleccionables', 'Electronica', 'Filatelia', 'Juguetes', 'Numismatica', 'Relojes', 'Ropa y accesorios', 'Otros']
+
+export default function Home() {
   const [remates, setRemates] = useState([])
   const [busqueda, setBusqueda] = useState('')
   const [cargando, setCargando] = useState(true)
