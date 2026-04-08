@@ -1,16 +1,21 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useParams } from 'next/navigation'
 import { supabase } from '../../supabase'
 import Navbar from '../../Navbar'
 
-const CATEGORIAS = ['Antiguedades','Coleccionables','Electronica','Filatelia','Juguetes','Numismatica','Relojes','Ropa y accesorios','Otros']export default function PaginaCategoria({ params }) {
+const CATEGORIAS = ['Antiguedades','Coleccionables','Electronica','Filatelia','Juguetes','Numismatica','Relojes','Ropa y accesorios','Otros']
+
+export default function PaginaCategoria() {
+  const params = useParams()
+  const nombre = params.nombre
   const [remates, setRemates] = useState([])
   const [cargando, setCargando] = useState(true)
-  const nombre = params.nombre
 
   useEffect(() => {
     async function cargar() {
+      if (!nombre) return
       const { data } = await supabase
         .from('remates')
         .select('*')
