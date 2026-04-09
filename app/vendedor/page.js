@@ -6,6 +6,7 @@ import Navbar from '../Navbar'
 
 export default function PanelVendedor() {
   const [remates, setRemates] = useState([])
+  const [totalPujas, setTotalPujas] = useState(0)
   const [cargando, setCargando] = useState(true)
 
   useEffect(() => {
@@ -20,6 +21,16 @@ export default function PanelVendedor() {
         .order('created_at', { ascending: false })
 
       setRemates(data || [])
+
+      if (data && data.length > 0) {
+        const ids = data.map(r => r.id)
+        const { count } = await supabase
+          .from('pujas')
+          .select('*', { count: 'exact', head: true })
+          .in('remate_id', ids)
+        setTotalPujas(count || 0)
+      }
+
       setCargando(false)
     }
     cargarRemates()
@@ -44,7 +55,7 @@ export default function PanelVendedor() {
           {[
             ['Remates activos', remates.filter(r => r.activo).length],
             ['Total publicados', remates.length],
-            ['Pujas recibidas', '—'],
+            ['Pujas recibidas', totalPujas],
           ].map(([lbl, val]) => (
             <div key={lbl} style={{ background:'#fff', border:'1px solid #eee', borderRadius:'10px', padding:'16px' }}>
               <div style={{ fontSize:'12px', color:'#999', marginBottom:'6px' }}>{lbl}</div>
