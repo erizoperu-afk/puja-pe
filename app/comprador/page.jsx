@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../supabase'
 import Navbar from '../Navbar'
 
+const POR_PAGINA = 12
+
 export default function PanelComprador() {
   const [tab, setTab] = useState('pujas')
   const [usuario, setUsuario] = useState(null)
@@ -12,6 +14,7 @@ export default function PanelComprador() {
   const [ganados, setGanados] = useState([])
   const [notificaciones, setNotificaciones] = useState([])
   const [cargando, setCargando] = useState(true)
+  const [pagina, setPagina] = useState(1)
 
   useEffect(() => {
     async function cargarDatos() {
@@ -19,11 +22,11 @@ export default function PanelComprador() {
       if (!session) { window.location.href = '/login'; return }
       setUsuario(session.user)
       const uid = session.user.id
-      const { data: misPujas } = await supabase.from('pujas').select('*, remates(*)').eq('comprador_id', uid).order('created_at', { ascending: false })
+      const { data: misPujas } = await supabase.from('pujas').select('*, remates(*)').eq('usuario_id', uid).order('created_at', { ascending: false })
       setPujas(misPujas || [])
       const { data: misFavoritos } = await supabase.from('favoritos').select('*, remates(*)').eq('usuario_id', uid).order('created_at', { ascending: false })
       setFavoritos(misFavoritos || [])
-      const { data: misGanados } = await supabase.from('pujas').select('*, remates(*)').eq('comprador_id', uid).eq('ganador', true).order('created_at', { ascending: false })
+      const { data: misGanados } = await supabase.from('pujas').select('*, remates(*)').eq('usuario_id', uid).eq('ganador', true).order('created_at', { ascending: false })
       setGanados(misGanados || [])
       const { data: misNotis } = await supabase.from('notificaciones').select('*, remates(*)').eq('usuario_id', uid).order('created_at', { ascending: false })
       setNotificaciones(misNotis || [])
@@ -31,6 +34,8 @@ export default function PanelComprador() {
     }
     cargarDatos()
   }, [])
+
+  useEffect(() => { setPagina(1) }, [tab])
 
   async function quitarFavorito(favId) {
     await supabase.from('favoritos').delete().eq('id', favId)
@@ -49,7 +54,30 @@ export default function PanelComprador() {
     vacio: { textAlign:'center', padding:'40px', background:'#f9f9f9', borderRadius:'12px', color:'#999', fontSize:'14px' }
   }
 
+  const btnPag = { padding:'8px 16px', borderRadius:'8px', border:'1px solid #ddd', background:'#fff', cursor:'pointer', fontSize:'13px', color:'#666' }
+  const btnPagActivo = { ...btnPag, background:'#1D9E75', color:'white', border:'1px solid #1D9E75', fontWeight:'500' }
+
   const notisNoLeidas = notificaciones.filter(n => !n.leida).length
+
+  function Paginacion({ items }) {
+    const total = Math.ceil(items.length / POR_PAGINA)
+    if (total <= 1) return null
+    return (
+      <div style={{ display:'flex', justifyContent:'center', gap:'8px', marginTop:'24px', flexWrap:'wrap' }}>
+        <button onClick={() => setPagina(p => Math.max(1, p - 1))} disabled={pagina === 1}
+          style={{ ...btnPag, opacity: pagina === 1 ? 0.4 : 1 }}>← Anterior</button>
+        {Array.from({ length: total }, (_, i) => i + 1).map(n => (
+          <button key={n} onClick={() => setPagina(n)} style={n === pagina ? btnPagActivo : btnPag}>{n}</button>
+        ))}
+        <button onClick={() => setPagina(p => Math.min(total, p + 1))} disabled={pagina === total}
+          style={{ ...btnPag, opacity: pagina === total ? 0.4 : 1 }}>Siguiente →</button>
+      </div>
+    )
+  }
+
+  function paginar(items) {
+    return items.slice((pagina - 1) * POR_PAGINA, pagina * POR_PAGINA)
+  }
 
   if (cargando) return (<main style={{ fontFamily:'sans-serif' }}><Navbar /><div style={{ textAlign:'center', padding:'60px', color:'#999' }}>Cargando tu panel...</div></main>)
 
@@ -60,7 +88,7 @@ export default function PanelComprador() {
         <h1 style={{ fontSize:'22px', fontWeight:'500', marginBottom:'24px' }}>Mi panel comprador</h1>
         <div style={{ display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:'12px', marginBottom:'28px' }}>
           {[['Pujas realizadas', pujas.length], ['Remates ganados', ganados.length], ['Favoritos', favoritos.length], ['Notificaciones', notisNoLeidas]].map(([lbl, val]) => (
-            <div key={lbl} style={{ background:'#f9f9f9', border:'1px solid #eee', borderRadius:'10px', padding:'16px' }}>
+            <div key={lbl} style={{ background:'#fff', border:'1px solid #eee', borderRadius:'10px', padding:'16px' }}>
               <div style={{ fontSize:'12px', color:'#999', marginBottom:'6px' }}>{lbl}</div>
               <div style={{ fontSize:'24px', fontWeight:'500' }}>{val}</div>
             </div>
@@ -74,10 +102,102 @@ export default function PanelComprador() {
             Notificaciones {notisNoLeidas > 0 && <span style={{ background:'#E24B4A', color:'white', borderRadius:'50%', padding:'1px 6px', fontSize:'11px', marginLeft:'4px' }}>{notisNoLeidas}</span>}
           </button>
         </div>
-        {tab === 'pujas' && <div>{pujas.length === 0 && <div style={estilo.vacio}>Aún no has realizado ninguna puja.</div>}{pujas.map((puja) => { const remate = puja.remates; const ganando = remate?.precio_actual === puja.monto; return (<div key={puja.id} style={estilo.tarjeta}><div style={{ width:'56px', height:'56px', background:'#f5f5f5', borderRadius:'8px', border:'1px solid #eee', flexShrink:0, overflow:'hidden' }}>{remate?.imagen_url && <img src={remate.imagen_url} alt='' style={{ width:'100%', height:'100%', objectFit:'cover' }} />}</div><div style={{ flex:1 }}><p style={{ fontWeight:'500', fontSize:'14px', marginBottom:'3px' }}>{remate?.titulo}</p><p style={{ fontSize:'12px', color:'#999' }}>Tu puja: S/ {Number(puja.monto).toLocaleString()}</p></div><div style={{ textAlign:'right' }}><p style={{ fontSize:'16px', fontWeight:'500', marginBottom:'4px' }}>S/ {Number(remate?.precio_actual).toLocaleString()}</p><span style={estilo.badge(ganando ? 'verde' : 'rojo')}>{ganando ? 'Ganando' : 'Superado'}</span></div><a href={'/remate/' + remate?.id} style={{ fontSize:'12px', color:'#1D9E75', textDecoration:'none', padding:'6px 12px', border:'1px solid #1D9E75', borderRadius:'8px' }}>Ver</a></div>) })}</div>}
-        {tab === 'ganados' && <div>{ganados.length === 0 && <div style={estilo.vacio}>Aún no has ganado ningún remate.</div>}{ganados.map((puja) => { const remate = puja.remates; return (<div key={puja.id} style={estilo.tarjeta}><div style={{ width:'56px', height:'56px', background:'#f5f5f5', borderRadius:'8px', border:'1px solid #eee', flexShrink:0, overflow:'hidden' }}>{remate?.imagen_url && <img src={remate.imagen_url} alt='' style={{ width:'100%', height:'100%', objectFit:'cover' }} />}</div><div style={{ flex:1 }}><p style={{ fontWeight:'500', fontSize:'14px', marginBottom:'3px' }}>{remate?.titulo}</p><p style={{ fontSize:'12px', color:'#999' }}>{remate?.categoria}</p></div><div style={{ textAlign:'right' }}><p style={{ fontSize:'16px', fontWeight:'500', marginBottom:'4px' }}>S/ {Number(puja.monto).toLocaleString()}</p><span style={estilo.badge('verde')}>Ganado</span></div><a href={'/remate/' + remate?.id} style={{ fontSize:'12px', color:'#1D9E75', textDecoration:'none', padding:'6px 12px', border:'1px solid #1D9E75', borderRadius:'8px' }}>Ver</a></div>) })}</div>}
-        {tab === 'favoritos' && <div>{favoritos.length === 0 && <div style={estilo.vacio}>No tienes remates guardados como favoritos.</div>}{favoritos.map((fav) => { const remate = fav.remates; return (<div key={fav.id} style={estilo.tarjeta}><div style={{ width:'56px', height:'56px', background:'#f5f5f5', borderRadius:'8px', border:'1px solid #eee', flexShrink:0, overflow:'hidden' }}>{remate?.imagen_url && <img src={remate.imagen_url} alt='' style={{ width:'100%', height:'100%', objectFit:'cover' }} />}</div><div style={{ flex:1 }}><p style={{ fontWeight:'500', fontSize:'14px', marginBottom:'3px' }}>{remate?.titulo}</p><p style={{ fontSize:'12px', color:'#999' }}>S/ {Number(remate?.precio_actual).toLocaleString()} · {remate?.categoria}</p></div><span style={estilo.badge(remate?.activo ? 'verde' : 'gris')}>{remate?.activo ? 'Activo' : 'Finalizado'}</span><a href={'/remate/' + remate?.id} style={{ fontSize:'12px', color:'#1D9E75', textDecoration:'none', padding:'6px 12px', border:'1px solid #1D9E75', borderRadius:'8px' }}>Ver</a><button onClick={() => quitarFavorito(fav.id)} style={{ fontSize:'12px', color:'#A32D2D', background:'none', border:'1px solid #E24B4A', borderRadius:'8px', padding:'6px 12px', cursor:'pointer' }}>Quitar</button></div>) })}</div>}
-        {tab === 'notificaciones' && <div>{notificaciones.length === 0 && <div style={estilo.vacio}>No tienes notificaciones aún.</div>}{notificaciones.map((noti) => (<div key={noti.id} style={{ ...estilo.tarjeta, background: noti.leida ? '#fff' : '#F0FBF7', border: noti.leida ? '1px solid #eee' : '1px solid #9FE1CB' }}><div style={{ width:'10px', height:'10px', borderRadius:'50%', background: noti.leida ? '#ddd' : '#1D9E75', flexShrink:0 }}></div><div style={{ flex:1 }}><p style={{ fontSize:'14px', marginBottom:'3px' }}>{noti.mensaje}</p><p style={{ fontSize:'12px', color:'#999' }}>{new Date(noti.created_at).toLocaleDateString('es-PE', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })}</p></div>{noti.remates && <a href={'/remate/' + noti.remate_id} style={{ fontSize:'12px', color:'#1D9E75', textDecoration:'none', padding:'6px 12px', border:'1px solid #1D9E75', borderRadius:'8px' }}>Ver remate</a>}{!noti.leida && <button onClick={() => marcarLeida(noti.id)} style={{ fontSize:'12px', color:'#666', background:'none', border:'1px solid #ddd', borderRadius:'8px', padding:'6px 12px', cursor:'pointer' }}>Marcar leída</button>}</div>))}</div>}
+
+        {tab === 'pujas' && (
+          <div>
+            {pujas.length === 0 && <div style={estilo.vacio}>Aún no has realizado ninguna puja.</div>}
+            {paginar(pujas).map((puja) => {
+              const remate = puja.remates
+              const ganando = remate?.precio_actual === puja.monto
+              return (
+                <div key={puja.id} style={estilo.tarjeta}>
+                  <div style={{ width:'56px', height:'56px', background:'#f5f5f5', borderRadius:'8px', border:'1px solid #eee', flexShrink:0, overflow:'hidden' }}>
+                    {remate?.imagen_url && <img src={remate.imagen_url} alt='' style={{ width:'100%', height:'100%', objectFit:'cover' }} />}
+                  </div>
+                  <div style={{ flex:1 }}>
+                    <p style={{ fontWeight:'500', fontSize:'14px', marginBottom:'3px' }}>{remate?.titulo}</p>
+                    <p style={{ fontSize:'12px', color:'#999' }}>Tu puja: S/ {Number(puja.monto).toLocaleString()}</p>
+                  </div>
+                  <div style={{ textAlign:'right' }}>
+                    <p style={{ fontSize:'16px', fontWeight:'500', marginBottom:'4px' }}>S/ {Number(remate?.precio_actual).toLocaleString()}</p>
+                    <span style={estilo.badge(ganando ? 'verde' : 'rojo')}>{ganando ? 'Ganando' : 'Superado'}</span>
+                  </div>
+                  <a href={'/remate/' + remate?.id} style={{ fontSize:'12px', color:'#1D9E75', textDecoration:'none', padding:'6px 12px', border:'1px solid #1D9E75', borderRadius:'8px' }}>Ver</a>
+                </div>
+              )
+            })}
+            <Paginacion items={pujas} />
+          </div>
+        )}
+
+        {tab === 'ganados' && (
+          <div>
+            {ganados.length === 0 && <div style={estilo.vacio}>Aún no has ganado ningún remate.</div>}
+            {paginar(ganados).map((puja) => {
+              const remate = puja.remates
+              return (
+                <div key={puja.id} style={estilo.tarjeta}>
+                  <div style={{ width:'56px', height:'56px', background:'#f5f5f5', borderRadius:'8px', border:'1px solid #eee', flexShrink:0, overflow:'hidden' }}>
+                    {remate?.imagen_url && <img src={remate.imagen_url} alt='' style={{ width:'100%', height:'100%', objectFit:'cover' }} />}
+                  </div>
+                  <div style={{ flex:1 }}>
+                    <p style={{ fontWeight:'500', fontSize:'14px', marginBottom:'3px' }}>{remate?.titulo}</p>
+                    <p style={{ fontSize:'12px', color:'#999' }}>{remate?.categoria}</p>
+                  </div>
+                  <div style={{ textAlign:'right' }}>
+                    <p style={{ fontSize:'16px', fontWeight:'500', marginBottom:'4px' }}>S/ {Number(puja.monto).toLocaleString()}</p>
+                    <span style={estilo.badge('verde')}>Ganado</span>
+                  </div>
+                  <a href={'/remate/' + remate?.id} style={{ fontSize:'12px', color:'#1D9E75', textDecoration:'none', padding:'6px 12px', border:'1px solid #1D9E75', borderRadius:'8px' }}>Ver</a>
+                </div>
+              )
+            })}
+            <Paginacion items={ganados} />
+          </div>
+        )}
+
+        {tab === 'favoritos' && (
+          <div>
+            {favoritos.length === 0 && <div style={estilo.vacio}>No tienes remates guardados como favoritos.</div>}
+            {paginar(favoritos).map((fav) => {
+              const remate = fav.remates
+              return (
+                <div key={fav.id} style={estilo.tarjeta}>
+                  <div style={{ width:'56px', height:'56px', background:'#f5f5f5', borderRadius:'8px', border:'1px solid #eee', flexShrink:0, overflow:'hidden' }}>
+                    {remate?.imagen_url && <img src={remate.imagen_url} alt='' style={{ width:'100%', height:'100%', objectFit:'cover' }} />}
+                  </div>
+                  <div style={{ flex:1 }}>
+                    <p style={{ fontWeight:'500', fontSize:'14px', marginBottom:'3px' }}>{remate?.titulo}</p>
+                    <p style={{ fontSize:'12px', color:'#999' }}>S/ {Number(remate?.precio_actual).toLocaleString()} · {remate?.categoria}</p>
+                  </div>
+                  <span style={estilo.badge(remate?.activo ? 'verde' : 'gris')}>{remate?.activo ? 'Activo' : 'Finalizado'}</span>
+                  <a href={'/remate/' + remate?.id} style={{ fontSize:'12px', color:'#1D9E75', textDecoration:'none', padding:'6px 12px', border:'1px solid #1D9E75', borderRadius:'8px' }}>Ver</a>
+                  <button onClick={() => quitarFavorito(fav.id)} style={{ fontSize:'12px', color:'#A32D2D', background:'none', border:'1px solid #E24B4A', borderRadius:'8px', padding:'6px 12px', cursor:'pointer' }}>Quitar</button>
+                </div>
+              )
+            })}
+            <Paginacion items={favoritos} />
+          </div>
+        )}
+
+        {tab === 'notificaciones' && (
+          <div>
+            {notificaciones.length === 0 && <div style={estilo.vacio}>No tienes notificaciones aún.</div>}
+            {paginar(notificaciones).map((noti) => (
+              <div key={noti.id} style={{ ...estilo.tarjeta, background: noti.leida ? '#fff' : '#F0FBF7', border: noti.leida ? '1px solid #eee' : '1px solid #9FE1CB' }}>
+                <div style={{ width:'10px', height:'10px', borderRadius:'50%', background: noti.leida ? '#ddd' : '#1D9E75', flexShrink:0 }}></div>
+                <div style={{ flex:1 }}>
+                  <p style={{ fontSize:'14px', marginBottom:'3px' }}>{noti.mensaje}</p>
+                  <p style={{ fontSize:'12px', color:'#999' }}>{new Date(noti.created_at).toLocaleDateString('es-PE', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })}</p>
+                </div>
+                {noti.remates && <a href={'/remate/' + noti.remate_id} style={{ fontSize:'12px', color:'#1D9E75', textDecoration:'none', padding:'6px 12px', border:'1px solid #1D9E75', borderRadius:'8px' }}>Ver remate</a>}
+                {!noti.leida && <button onClick={() => marcarLeida(noti.id)} style={{ fontSize:'12px', color:'#666', background:'none', border:'1px solid #ddd', borderRadius:'8px', padding:'6px 12px', cursor:'pointer' }}>Marcar leída</button>}
+              </div>
+            ))}
+            <Paginacion items={notificaciones} />
+          </div>
+        )}
+
       </div>
     </main>
   )
