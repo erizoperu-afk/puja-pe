@@ -232,14 +232,14 @@ export default function PanelVendedor() {
 
         {rematesActivos.length > 0 && (
           <>
-            <h2 style={{ fontSize:'15px', fontWeight:'500', marginBottom:'14px' }}>Publicaciones activas</h2>
+          <h2 style={{ fontSize:'18px', fontWeight:'700', marginBottom:'14px' }}>Publicaciones activas</h2>
             {rematesActivos.map(r => <TarjetaRemate key={r.id} remate={r} concluido={false} />)}
           </>
         )}
 
         {rematesConcluidos.length > 0 && (
           <>
-            <h2 style={{ fontSize:'15px', fontWeight:'500', marginBottom:'14px', marginTop:'28px', color:'#999' }}>Publicaciones concluidas</h2>
+            <h2 style={{ fontSize:'18px', fontWeight:'700', marginBottom:'14px', marginTop:'28px', color:'#999' }}>Publicaciones concluidas</h2>
             {rematesConcluidos.map(r => <TarjetaRemate key={r.id} remate={r} concluido={true} />)}
           </>
         )}
