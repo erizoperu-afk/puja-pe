@@ -4,10 +4,13 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../supabase'
 import Navbar from '../Navbar'
 
+const POR_PAGINA = 12
+
 export default function PanelVendedor() {
   const [remates, setRemates] = useState([])
   const [totalPujas, setTotalPujas] = useState(0)
   const [cargando, setCargando] = useState(true)
+  const [pagina, setPagina] = useState(1)
 
   useEffect(() => {
     async function cargarRemates() {
@@ -36,6 +39,12 @@ export default function PanelVendedor() {
     cargarRemates()
   }, [])
 
+  const totalPaginas = Math.ceil(remates.length / POR_PAGINA)
+  const rematesPagina = remates.slice((pagina - 1) * POR_PAGINA, pagina * POR_PAGINA)
+
+  const btnPag = { padding:'8px 16px', borderRadius:'8px', border:'1px solid #ddd', background:'#fff', cursor:'pointer', fontSize:'13px', color:'#666' }
+  const btnPagActivo = { ...btnPag, background:'#1D9E75', color:'white', border:'1px solid #1D9E75', fontWeight:'500' }
+
   if (cargando) return (
     <main style={{ fontFamily:'sans-serif' }}>
       <Navbar />
@@ -63,13 +72,21 @@ export default function PanelVendedor() {
             </div>
           ))}
         </div>
-        <h2 style={{ fontSize:'15px', fontWeight:'500', marginBottom:'14px' }}>Mis remates</h2>
+
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'14px' }}>
+          <h2 style={{ fontSize:'15px', fontWeight:'500' }}>Mis remates</h2>
+          {totalPaginas > 1 && (
+            <span style={{ fontSize:'13px', color:'#999' }}>Página {pagina} de {totalPaginas}</span>
+          )}
+        </div>
+
         {remates.length === 0 && (
           <div style={{ textAlign:'center', padding:'40px', background:'#fff', border:'1px solid #eee', borderRadius:'12px', color:'#999' }}>
             No tienes remates publicados aún. ¡Publica tu primer remate!
           </div>
         )}
-        {remates.map((remate) => (
+
+        {rematesPagina.map((remate) => (
           <div key={remate.id} style={{ background:'#fff', border:'1px solid #eee', borderRadius:'12px', padding:'16px', marginBottom:'10px', display:'flex', alignItems:'center', gap:'16px' }}>
             <div style={{ width:'56px', height:'56px', background:'#f5f5f5', borderRadius:'8px', border:'1px solid #eee', flexShrink:0, overflow:'hidden' }}>
               {remate.imagen_url && <img src={remate.imagen_url} alt='' style={{ width:'100%', height:'100%', objectFit:'cover' }} />}
@@ -87,6 +104,19 @@ export default function PanelVendedor() {
             <a href={'/remate/' + remate.id} style={{ fontSize:'12px', color:'#1D9E75', textDecoration:'none', padding:'6px 12px', border:'1px solid #1D9E75', borderRadius:'8px' }}>Ver</a>
           </div>
         ))}
+
+        {totalPaginas > 1 && (
+          <div style={{ display:'flex', justifyContent:'center', gap:'8px', marginTop:'24px', flexWrap:'wrap' }}>
+            <button onClick={() => setPagina(p => Math.max(1, p - 1))} disabled={pagina === 1}
+              style={{ ...btnPag, opacity: pagina === 1 ? 0.4 : 1 }}>← Anterior</button>
+            {Array.from({ length: totalPaginas }, (_, i) => i + 1).map(n => (
+              <button key={n} onClick={() => setPagina(n)} style={n === pagina ? btnPagActivo : btnPag}>{n}</button>
+            ))}
+            <button onClick={() => setPagina(p => Math.min(totalPaginas, p + 1))} disabled={pagina === totalPaginas}
+              style={{ ...btnPag, opacity: pagina === totalPaginas ? 0.4 : 1 }}>Siguiente →</button>
+          </div>
+        )}
+
       </div>
     </main>
   )
