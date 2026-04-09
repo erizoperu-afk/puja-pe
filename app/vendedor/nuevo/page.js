@@ -40,6 +40,18 @@ export default function NuevoRemate() {
     setCargando(true)
     const { data: { session } } = await supabase.auth.getSession()
     if (!session) { setError('Debes ingresar para publicar.'); setCargando(false); return }
+
+    const { data: cred } = await supabase
+      .from('creditos')
+      .select('saldo')
+      .eq('usuario_id', session.user.id)
+      .single()
+    if (!cred || cred.saldo <= 0) {
+      setError('No tienes créditos disponibles para publicar.')
+      setCargando(false)
+      return
+    }
+
     const fechaFin = new Date()
     fechaFin.setDate(fechaFin.getDate() + Number(form.duracion))
     let imagen_url = null
@@ -54,6 +66,7 @@ export default function NuevoRemate() {
       imagenes_url.push(urlData.publicUrl)
     }
     if (imagenes_url.length > 0) imagen_url = imagenes_url[0]
+
     const { error: err } = await supabase.from('remates').insert({
       titulo: form.titulo, descripcion: form.descripcion,
       precio_inicial: Number(form.precio_inicial), precio_actual: Number(form.precio_inicial),
@@ -65,6 +78,12 @@ export default function NuevoRemate() {
       imagen_url, imagenes_url,
     })
     if (err) { setError('Error al publicar: ' + err.message); setCargando(false); return }
+
+    await supabase
+      .from('creditos')
+      .update({ saldo: cred.saldo - 1 })
+      .eq('usuario_id', session.user.id)
+
     setMensaje('¡Remate publicado exitosamente!')
     setTimeout(() => { window.location.href = '/vendedor' }, 1500)
     setCargando(false)

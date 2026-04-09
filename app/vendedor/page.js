@@ -9,6 +9,7 @@ const POR_PAGINA = 12
 export default function PanelVendedor() {
   const [remates, setRemates] = useState([])
   const [totalPujas, setTotalPujas] = useState(0)
+  const [creditos, setCreditos] = useState(null)
   const [cargando, setCargando] = useState(true)
   const [pagina, setPagina] = useState(1)
 
@@ -22,7 +23,6 @@ export default function PanelVendedor() {
         .select('*')
         .eq('vendedor_id', session.user.id)
         .order('created_at', { ascending: false })
-
       setRemates(data || [])
 
       if (data && data.length > 0) {
@@ -33,6 +33,13 @@ export default function PanelVendedor() {
           .in('remate_id', ids)
         setTotalPujas(count || 0)
       }
+
+      const { data: cred } = await supabase
+        .from('creditos')
+        .select('saldo')
+        .eq('usuario_id', session.user.id)
+        .single()
+      setCreditos(cred?.saldo ?? 0)
 
       setCargando(false)
     }
@@ -60,6 +67,19 @@ export default function PanelVendedor() {
           <h1 style={{ fontSize:'22px', fontWeight:'500' }}>Mi panel vendedor</h1>
           <a href='/vendedor/nuevo' style={{ padding:'9px 18px', background:'#1D9E75', color:'white', borderRadius:'8px', textDecoration:'none', fontSize:'14px', fontWeight:'500' }}>+ Publicar remate</a>
         </div>
+
+        {/* CRÉDITOS */}
+        <div style={{ background:'#E1F5EE', border:'1px solid #9FE1CB', borderRadius:'12px', padding:'16px', marginBottom:'20px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+          <div>
+            <p style={{ fontSize:'13px', color:'#085041', marginBottom:'4px', fontWeight:'500' }}>Publicaciones disponibles</p>
+            <p style={{ fontSize:'13px', color:'#0F6E56' }}>Cada publicación usa 1 crédito</p>
+          </div>
+          <div style={{ textAlign:'right' }}>
+            <div style={{ fontSize:'32px', fontWeight:'500', color:'#085041' }}>{creditos}</div>
+            <span style={{ fontSize:'11px', background:'#1D9E75', color:'white', padding:'2px 10px', borderRadius:'20px' }}>BETA — Gratis</span>
+          </div>
+        </div>
+
         <div style={{ display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:'12px', marginBottom:'28px' }}>
           {[
             ['Remates activos', remates.filter(r => r.activo).length],
@@ -116,7 +136,6 @@ export default function PanelVendedor() {
               style={{ ...btnPag, opacity: pagina === totalPaginas ? 0.4 : 1 }}>Siguiente →</button>
           </div>
         )}
-
       </div>
     </main>
   )
