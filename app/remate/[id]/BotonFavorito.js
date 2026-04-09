@@ -1,54 +1,54 @@
+'use client'
+
+import { useState, useEffect } from 'react'
 import { supabase } from '../../supabase'
-import Navbar from '../../Navbar'
-import PujaBox from './PujaBox'
-import GaleriaFotos from './galeriaFotos'
-import BotonFavorito from './BotonFavorito'
 
-export default async function PaginaRemate({ params }) {
-  const { id } = await params
-  const { data: remate } = await supabase
-    .from('remates')
-    .select('*')
-    .eq('id', id)
-    .single()
+export default function BotonFavorito({ remateId }) {
+  const [esFavorito, setEsFavorito] = useState(false)
+  const [cargando, setCargando] = useState(false)
+  const [favoritoId, setFavoritoId] = useState(null)
 
-  if (!remate) return (
-    <div style={{ padding:'40px', fontFamily:'sans-serif' }}>Remate no encontrado.</div>
-  )
+  useEffect(() => {
+    async function verificar() {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) return
+      const { data } = await supabase
+        .from('favoritos')
+        .select('id')
+        .eq('usuario_id', session.user.id)
+        .eq('remate_id', remateId)
+        .single()
+      if (data) {
+        setEsFavorito(true)
+        setFavoritoId(data.id)
+      }
+    }
+    verificar()
+  }, [remateId])
+
+  async function toggleFavorito() {
+    setCargando(true)
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) { window.location.href = '/login'; return }
+    if (esFavorito) {
+      await supabase.from('favoritos').delete().eq('id', favoritoId)
+      setEsFavorito(false)
+      setFavoritoId(null)
+    } else {
+      const { data } = await supabase.from('favoritos').insert({
+        usuario_id: session.user.id,
+        remate_id: remateId
+      }).select().single()
+      setEsFavorito(true)
+      setFavoritoId(data.id)
+    }
+    setCargando(false)
+  }
 
   return (
-    <main style={{ fontFamily:'sans-serif' }}>
-      <Navbar />
-      <div style={{ maxWidth:'1100px', margin:'0 auto', padding:'24px', display:'grid', gridTemplateColumns:'1fr 340px', gap:'24px' }}>
-        <div>
-          <p style={{ fontSize:'12px', color:'#999', marginBottom:'12px' }}>
-            <a href='/' style={{ color:'#1D9E75', textDecoration:'none' }}>Inicio</a> › {remate.categoria} › {remate.titulo}
-          </p>
-          <GaleriaFotos imagenes={remate.imagenes_url || (remate.imagen_url ? [remate.imagen_url] : [])} titulo={remate.titulo} />
-          <div style={{ background:'#fff', border:'1px solid #eee', borderRadius:'12px', padding:'20px', marginBottom:'16px' }}>
-            <h2 style={{ fontSize:'15px', fontWeight:'500', marginBottom:'12px' }}>Descripcion</h2>
-            <p style={{ fontSize:'14px', color:'#555', lineHeight:'1.7' }}>{remate.descripcion}</p>
-          </div>
-          <div style={{ background:'#fff', border:'1px solid #eee', borderRadius:'12px', padding:'20px' }}>
-            <h2 style={{ fontSize:'15px', fontWeight:'500', marginBottom:'12px' }}>Detalles</h2>
-            {[
-              ['Categoria', remate.categoria],
-              ['Condicion', remate.condicion],
-              ['Ubicacion', remate.ubicacion],
-              ['Precio inicial', 'S/ ' + Number(remate.precio_inicial).toLocaleString()],
-            ].map(([lbl, val]) => (
-              <div key={lbl} style={{ display:'flex', justifyContent:'space-between', padding:'8px 0', borderBottom:'1px solid #f5f5f5', fontSize:'14px' }}>
-                <span style={{ color:'#999' }}>{lbl}</span>
-                <span style={{ fontWeight:'500' }}>{val}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-        <div>
-          <PujaBox remate={remate} />
-          <BotonFavorito remateId={remate.id} />
-        </div>
-      </div>
-    </main>
+    <button onClick={toggleFavorito} disabled={cargando}
+      style={{ width:'100%', padding:'10px', borderRadius:'8px', border: esFavorito ? '1px solid #E24B4A' : '1px solid #ddd', background: esFavorito ? '#FCEBEB' : 'transparent', color: esFavorito ? '#A32D2D' : '#666', fontSize:'14px', cursor:'pointer', marginTop:'8px', fontWeight:'500' }}>
+      {cargando ? '...' : esFavorito ? '❤ Guardado en favoritos' : '♡ Guardar en favoritos'}
+    </button>
   )
 }
