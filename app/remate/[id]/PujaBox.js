@@ -27,6 +27,31 @@ export default function PujaBox({ remate }) {
 
   useEffect(() => {
     if (!esPrecioFijo) cargarPujas()
+
+    // SUSCRIPCION EN TIEMPO REAL
+    const canal = supabase
+      .channel('pujas-' + remate.id)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'pujas',
+        filter: 'remate_id=eq.' + remate.id
+      }, () => {
+        cargarPujas()
+      })
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'remates',
+        filter: 'id=eq.' + remate.id
+      }, (payload) => {
+        setPrecio(Number(payload.new.precio_actual))
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(canal)
+    }
   }, [])
 
   async function cargarPujas() {
@@ -63,10 +88,8 @@ export default function PujaBox({ remate }) {
       .insert({ remate_id: remate.id, usuario_id: session.user.id, monto })
     if (errPuja) { setError('Error al registrar puja: ' + errPuja.message); setCargando(false); return }
     await supabase.from('remates').update({ precio_actual: monto }).eq('id', remate.id)
-    setPrecio(monto)
     setMiPuja('')
     setMensaje('¡Puja registrada! Vas ganando.')
-    cargarPujas()
     setCargando(false)
   }
 
@@ -114,7 +137,6 @@ export default function PujaBox({ remate }) {
     <div style={{ position:'sticky', top:'24px' }}>
       <div style={{ background:'#fff', border:'1px solid #eee', borderRadius:'12px', padding:'20px' }}>
 
-        {/* BADGE */}
         <div style={{ display:'inline-flex', alignItems:'center', gap:'6px', background: esPrecioFijo ? '#E6F1FB' : '#FCEBEB', color: esPrecioFijo ? '#185FA5' : '#A32D2D', padding:'4px 10px', borderRadius:'20px', fontSize:'12px', marginBottom:'12px' }}>
           <div style={{ width:'7px', height:'7px', borderRadius:'50%', background: esPrecioFijo ? '#378ADD' : '#E24B4A' }}></div>
           {esPrecioFijo ? 'Venta directa' : 'En vivo'}
@@ -122,7 +144,6 @@ export default function PujaBox({ remate }) {
 
         <h1 style={{ fontSize:'17px', fontWeight:'500', marginBottom:'16px', lineHeight:'1.4' }}>{remate.titulo}</h1>
 
-        {/* TEMPORIZADOR — solo subasta */}
         {!esPrecioFijo && (
           <div style={{ background:'#f9f9f9', borderRadius:'8px', padding:'12px', textAlign:'center', marginBottom:'16px' }}>
             <p style={{ fontSize:'11px', color:'#999', marginBottom:'6px' }}>Tiempo restante</p>
@@ -140,7 +161,6 @@ export default function PujaBox({ remate }) {
           </div>
         )}
 
-        {/* PRECIO */}
         <p style={{ fontSize:'11px', color:'#999', marginBottom:'4px' }}>
           {esPrecioFijo ? 'Precio' : 'Precio actual'}
         </p>
@@ -156,7 +176,6 @@ export default function PujaBox({ remate }) {
           </p>
         )}
 
-        {/* HISTORIAL PUJAS — solo subasta */}
         {!esPrecioFijo && pujas.length > 0 && (
           <div style={{ background:'#f9f9f9', borderRadius:'8px', padding:'10px', marginBottom:'16px' }}>
             <p style={{ fontSize:'11px', color:'#999', marginBottom:'6px' }}>Ultimas pujas</p>
@@ -172,7 +191,6 @@ export default function PujaBox({ remate }) {
         {error && <div style={{ background:'#FCEBEB', color:'#A32D2D', padding:'8px 12px', borderRadius:'8px', fontSize:'13px', marginBottom:'12px' }}>{error}</div>}
         {mensaje && <div style={{ background:'#E1F5EE', color:'#085041', padding:'8px 12px', borderRadius:'8px', fontSize:'13px', marginBottom:'12px' }}>{mensaje}</div>}
 
-        {/* ACCIONES SUBASTA */}
         {!esPrecioFijo && (
           <>
             <p style={{ fontSize:'12px', color:'#666', marginBottom:'6px' }}>Tu puja — mínimo S/ {precio + Number(remate.incremento_minimo)}</p>
@@ -191,7 +209,6 @@ export default function PujaBox({ remate }) {
           </>
         )}
 
-        {/* ACCIONES PRECIO FIJO */}
         {esPrecioFijo && (
           <>
             <button onClick={comprarDirecto} disabled={cargando}
@@ -224,7 +241,6 @@ export default function PujaBox({ remate }) {
             )}
           </>
         )}
-
       </div>
     </div>
   )
