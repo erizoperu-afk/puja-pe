@@ -2,6 +2,7 @@ import { supabase } from '../../supabase'
 import Navbar from '../../Navbar'
 import PujaBox from './PujaBox'
 import GaleriaFotos from './galeriaFotos'
+import BotonFavorito from './BotonFavorito'
 
 export default async function PaginaRemate({ params }) {
   const { id } = await params
@@ -43,7 +44,10 @@ export default async function PaginaRemate({ params }) {
             ))}
           </div>
         </div>
-        <div><PujaBox remate={remate} /></div>
+        <div>
+          <PujaBox remate={remate} />
+          <BotonFavorito remateId={remate.id} />
+        </div>
       </div>
     </main>
   )
