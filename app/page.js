@@ -4,7 +4,18 @@ import { useState, useEffect } from 'react'
 import { supabase } from './supabase'
 import Navbar from './Navbar'
 
-const CATEGORIAS = ['Antiguedades', 'Coleccionables', 'Electronica', 'Filatelia', 'Juguetes', 'Numismatica', 'Relojes', 'Ropa y accesorios', 'Otros']
+const CATEGORIAS = [
+  { nombre: 'Antiguedades', icono: '🏺' },
+  { nombre: 'Coleccionables', icono: '⭐' },
+  { nombre: 'Electronica', icono: '💻' },
+  { nombre: 'Filatelia', icono: '✉️' },
+  { nombre: 'Juguetes', icono: '🧸' },
+  { nombre: 'Numismatica', icono: '🪙' },
+  { nombre: 'Relojes', icono: '⌚' },
+  { nombre: 'Ropa y accesorios', icono: '👗' },
+  { nombre: 'Otros', icono: '📦' },
+]
+
 const POR_PAGINA = 12
 
 function TiempoRestante({ fechaFin, tipoPub }) {
@@ -73,22 +84,17 @@ export default function Home() {
   const [busqueda, setBusqueda] = useState('')
   const [cargando, setCargando] = useState(true)
   const [pagina, setPagina] = useState(1)
+  const [catHover, setCatHover] = useState(null)
 
   useEffect(() => {
     async function cargarRemates() {
       const { data } = await supabase
-        .from('remates')
-        .select('*')
-        .eq('activo', true)
+        .from('remates').select('*').eq('activo', true)
         .order('created_at', { ascending: false })
-
       const rematesActivos = data || []
       setRemates(rematesActivos)
 
-      const { data: pujasData } = await supabase
-        .from('pujas')
-        .select('remate_id')
-
+      const { data: pujasData } = await supabase.from('pujas').select('remate_id')
       const conteo = {}
       pujasData?.forEach(p => { conteo[p.remate_id] = (conteo[p.remate_id] || 0) + 1 })
 
@@ -113,10 +119,7 @@ export default function Home() {
   const totalPaginas = Math.ceil(rematesFiltrados.length / POR_PAGINA)
   const rematesPagina = rematesFiltrados.slice((pagina - 1) * POR_PAGINA, pagina * POR_PAGINA)
 
-  function handleBusqueda(e) {
-    setBusqueda(e.target.value)
-    setPagina(1)
-  }
+  function handleBusqueda(e) { setBusqueda(e.target.value); setPagina(1) }
 
   const btnPag = { padding:'8px 16px', borderRadius:'8px', border:'1px solid #ddd', background:'#fff', cursor:'pointer', fontSize:'13px', color:'#666' }
   const btnPagActivo = { ...btnPag, background:'#1D9E75', color:'white', border:'1px solid #1D9E75', fontWeight:'500' }
@@ -126,12 +129,21 @@ export default function Home() {
       <Navbar />
 
       {/* CATEGORIAS */}
-      <div style={{ background:'#fff', borderBottom:'1px solid #eee', padding:'0 24px', overflowX:'auto' }}>
-        <div style={{ display:'flex', gap:'4px', maxWidth:'1200px', margin:'0 auto' }}>
+      <div style={{ background:'#fff', borderBottom:'1px solid #eee', padding:'0 24px' }}>
+        <div style={{ display:'flex', justifyContent:'center', flexWrap:'wrap', maxWidth:'1200px', margin:'0 auto', gap:'4px', padding:'8px 0' }}>
           {CATEGORIAS.map(cat => (
-            <a key={cat} href={'/categoria/' + cat}
-              style={{ padding:'12px 16px', fontSize:'13px', textDecoration:'none', whiteSpace:'nowrap', borderBottom:'2px solid transparent', color:'#666', fontWeight:'400' }}>
-              {cat}
+            <a key={cat.nombre} href={'/categoria/' + cat.nombre}
+              onMouseEnter={() => setCatHover(cat.nombre)}
+              onMouseLeave={() => setCatHover(null)}
+              style={{
+                display:'flex', flexDirection:'column', alignItems:'center', gap:'6px',
+                padding:'12px 16px', borderRadius:'10px', textDecoration:'none', minWidth:'80px',
+                background: catHover === cat.nombre ? '#E1F5EE' : 'transparent',
+                color: catHover === cat.nombre ? '#085041' : '#555',
+                transition:'background 0.15s',
+              }}>
+              <span style={{ fontSize:'24px', lineHeight:1 }}>{cat.icono}</span>
+              <span style={{ fontSize:'11px', fontWeight:'500', textAlign:'center', whiteSpace:'nowrap' }}>{cat.nombre}</span>
             </a>
           ))}
         </div>
@@ -200,13 +212,10 @@ export default function Home() {
             <span style={{ fontSize:'13px', color:'#999' }}>Página {pagina} de {totalPaginas}</span>
           )}
         </div>
-
         {cargando && <div style={{ textAlign:'center', padding:'40px', color:'#999' }}>Cargando remates...</div>}
-
         <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(220px, 1fr))', gap:'16px' }}>
           {rematesPagina.map(remate => <TarjetaRemate key={remate.id} remate={remate} />)}
         </div>
-
         {totalPaginas > 1 && (
           <div style={{ display:'flex', justifyContent:'center', gap:'8px', marginTop:'32px', flexWrap:'wrap' }}>
             <button onClick={() => setPagina(p => Math.max(1, p - 1))} disabled={pagina === 1}
