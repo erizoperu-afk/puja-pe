@@ -8,17 +8,23 @@ const ADMIN_EMAIL = 'paulq@hotmail.com'
 function Logo() {
   return (
     <a href='/' style={{ textDecoration:'none', display:'flex', alignItems:'center' }}>
-      <svg width="180" height="44" viewBox="0 0 180 44" xmlns="http://www.w3.org/2000/svg">
+      <svg width="230" height="44" viewBox="0 0 230 44" xmlns="http://www.w3.org/2000/svg">
         <rect x="0" y="2" width="40" height="40" rx="10" fill="#1D9E75"/>
         <g transform="translate(4,4)">
           <rect x="18" y="6" width="20" height="7" rx="3" fill="white" transform="rotate(-40 18 6)"/>
           <rect x="2" y="22" width="7" height="16" rx="3" fill="white" transform="rotate(-40 2 22)"/>
           <rect x="21" y="4" width="9" height="5" rx="2" fill="#9FE1CB" transform="rotate(-40 21 4)"/>
         </g>
-        <text x="50" y="22" style={{fontSize:'22px', fontWeight:'700', fill:'#1a1a1a', fontFamily:'sans-serif'}}>puja<tspan fill="#1D9E75">.pe</tspan></text>
-        <text x="51" y="36" style={{fontSize:'11px', fill:'#888', fontFamily:'sans-serif', letterSpacing:'2px'}}>REMATES ONLINE</text>
-        <rect x="134" y="26" width="38" height="16" rx="8" fill="#E1F5EE"/>
-        <text x="153" y="38" textAnchor="middle" style={{fontSize:'9px', fontWeight:'700', fill:'#085041', fontFamily:'sans-serif', letterSpacing:'1px'}}>BETA</text>
+        <text x="50" y="22" style={{fontSize:'22px', fontWeight:'700', fill:'#1a1a1a', fontFamily:'sans-serif'}}>
+          puja<tspan fill="#1D9E75">.pe</tspan>
+        </text>
+        <text x="51" y="38" style={{fontSize:'11px', fill:'#888', fontFamily:'sans-serif', letterSpacing:'2px'}}>
+          REMATES ONLINE
+        </text>
+        <rect x="188" y="6" width="38" height="16" rx="8" fill="#E1F5EE"/>
+        <text x="207" y="18" textAnchor="middle" style={{fontSize:'9px', fontWeight:'700', fill:'#085041', fontFamily:'sans-serif', letterSpacing:'1px'}}>
+          BETA
+        </text>
       </svg>
     </a>
   )
