@@ -12,45 +12,91 @@ export default function PanelVendedor() {
   const [creditos, setCreditos] = useState(null)
   const [cargando, setCargando] = useState(true)
   const [pagina, setPagina] = useState(1)
+  const [editando, setEditando] = useState(null)
+  const [formEditar, setFormEditar] = useState({})
+  const [guardando, setGuardando] = useState(false)
 
   useEffect(() => {
-    async function cargarRemates() {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) { window.location.href = '/login'; return }
-
-      const { data } = await supabase
-        .from('remates')
-        .select('*')
-        .eq('vendedor_id', session.user.id)
-        .order('created_at', { ascending: false })
-      setRemates(data || [])
-
-      if (data && data.length > 0) {
-        const ids = data.map(r => r.id)
-        const { count } = await supabase
-          .from('pujas')
-          .select('*', { count: 'exact', head: true })
-          .in('remate_id', ids)
-        setTotalPujas(count || 0)
-      }
-
-      const { data: cred } = await supabase
-        .from('creditos')
-        .select('saldo')
-        .eq('usuario_id', session.user.id)
-        .single()
-      setCreditos(cred?.saldo ?? 0)
-
-      setCargando(false)
-    }
-    cargarRemates()
+    cargarDatos()
   }, [])
+
+  async function cargarDatos() {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) { window.location.href = '/login'; return }
+
+    const { data } = await supabase
+      .from('remates')
+      .select('*')
+      .eq('vendedor_id', session.user.id)
+      .order('created_at', { ascending: false })
+    setRemates(data || [])
+
+    if (data && data.length > 0) {
+      const ids = data.map(r => r.id)
+      const { count } = await supabase
+        .from('pujas')
+        .select('*', { count: 'exact', head: true })
+        .in('remate_id', ids)
+      setTotalPujas(count || 0)
+    }
+
+    const { data: cred } = await supabase
+      .from('creditos')
+      .select('saldo')
+      .eq('usuario_id', session.user.id)
+      .single()
+    setCreditos(cred?.saldo ?? 0)
+    setCargando(false)
+  }
+
+  function estadoRemate(remate) {
+    if (remate.activo) return 'activo'
+    if (remate.comprador_id) return 'vendido'
+    const tienePujas = remate.precio_actual > remate.precio_inicial
+    if (tienePujas) return 'vendido'
+    return 'sin_oferta'
+  }
+
+  async function republicar(remate) {
+    if (creditos <= 0) { alert('No tienes créditos disponibles.'); return }
+    const fechaFin = new Date()
+    fechaFin.setDate(fechaFin.getDate() + 3)
+    await supabase.from('remates').update({
+      activo: true,
+      fecha_fin: fechaFin.toISOString(),
+      precio_actual: remate.precio_inicial,
+      comprador_id: null
+    }).eq('id', remate.id)
+    await supabase.from('creditos').update({ saldo: creditos - 1 }).eq('usuario_id', remate.vendedor_id)
+    setCreditos(creditos - 1)
+    cargarDatos()
+  }
+
+  async function guardarEdicion(remateId) {
+    setGuardando(true)
+    await supabase.from('remates').update({
+      titulo: formEditar.titulo,
+      descripcion: formEditar.descripcion,
+      precio_inicial: Number(formEditar.precio_inicial),
+      precio_actual: Number(formEditar.precio_inicial),
+    }).eq('id', remateId)
+    setEditando(null)
+    setGuardando(false)
+    cargarDatos()
+  }
+
+  function badgeEstado(remate) {
+    const estado = estadoRemate(remate)
+    if (estado === 'activo') return { texto: 'Activo', bg: '#E1F5EE', color: '#085041' }
+    if (estado === 'vendido') return { texto: 'Vendido', bg: '#E6F1FB', color: '#185FA5' }
+    return { texto: 'Sin oferta', bg: '#FCEBEB', color: '#A32D2D' }
+  }
 
   const totalPaginas = Math.ceil(remates.length / POR_PAGINA)
   const rematesPagina = remates.slice((pagina - 1) * POR_PAGINA, pagina * POR_PAGINA)
-
   const btnPag = { padding:'8px 16px', borderRadius:'8px', border:'1px solid #ddd', background:'#fff', cursor:'pointer', fontSize:'13px', color:'#666' }
   const btnPagActivo = { ...btnPag, background:'#1D9E75', color:'white', border:'1px solid #1D9E75', fontWeight:'500' }
+  const campo = { width:'100%', padding:'8px 10px', borderRadius:'8px', border:'1px solid #ddd', fontSize:'13px', boxSizing:'border-box', marginBottom:'8px' }
 
   if (cargando) return (
     <main style={{ fontFamily:'sans-serif' }}>
@@ -65,7 +111,7 @@ export default function PanelVendedor() {
       <div style={{ maxWidth:'900px', margin:'0 auto', padding:'24px' }}>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'24px' }}>
           <h1 style={{ fontSize:'22px', fontWeight:'500' }}>Mi panel vendedor</h1>
-          <a href='/vendedor/nuevo' style={{ padding:'9px 18px', background:'#1D9E75', color:'white', borderRadius:'8px', textDecoration:'none', fontSize:'14px', fontWeight:'500' }}>+ Publicar remate</a>
+          <a href='/vendedor/nuevo' style={{ padding:'9px 18px', background:'#1D9E75', color:'white', borderRadius:'8px', textDecoration:'none', fontSize:'14px', fontWeight:'500' }}>+ Publicar</a>
         </div>
 
         {/* CRÉDITOS */}
@@ -80,6 +126,7 @@ export default function PanelVendedor() {
           </div>
         </div>
 
+        {/* MÉTRICAS */}
         <div style={{ display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:'12px', marginBottom:'28px' }}>
           {[
             ['Remates activos', remates.filter(r => r.activo).length],
@@ -94,10 +141,8 @@ export default function PanelVendedor() {
         </div>
 
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'14px' }}>
-          <h2 style={{ fontSize:'15px', fontWeight:'500' }}>Mis remates</h2>
-          {totalPaginas > 1 && (
-            <span style={{ fontSize:'13px', color:'#999' }}>Página {pagina} de {totalPaginas}</span>
-          )}
+          <h2 style={{ fontSize:'15px', fontWeight:'500' }}>Mis publicaciones</h2>
+          {totalPaginas > 1 && <span style={{ fontSize:'13px', color:'#999' }}>Página {pagina} de {totalPaginas}</span>}
         </div>
 
         {remates.length === 0 && (
@@ -106,24 +151,76 @@ export default function PanelVendedor() {
           </div>
         )}
 
-        {rematesPagina.map((remate) => (
-          <div key={remate.id} style={{ background:'#fff', border:'1px solid #eee', borderRadius:'12px', padding:'16px', marginBottom:'10px', display:'flex', alignItems:'center', gap:'16px' }}>
-            <div style={{ width:'56px', height:'56px', background:'#f5f5f5', borderRadius:'8px', border:'1px solid #eee', flexShrink:0, overflow:'hidden' }}>
-              {remate.imagen_url && <img src={remate.imagen_url} alt='' style={{ width:'100%', height:'100%', objectFit:'cover' }} />}
+        {rematesPagina.map((remate) => {
+          const estado = estadoRemate(remate)
+          const badge = badgeEstado(remate)
+          const esSinOferta = estado === 'sin_oferta'
+          const esEditando = editando === remate.id
+
+          return (
+            <div key={remate.id} style={{ background:'#fff', border:'1px solid #eee', borderRadius:'12px', padding:'16px', marginBottom:'10px' }}>
+              <div style={{ display:'flex', alignItems:'center', gap:'16px' }}>
+                <div style={{ width:'56px', height:'56px', background:'#f5f5f5', borderRadius:'8px', border:'1px solid #eee', flexShrink:0, overflow:'hidden' }}>
+                  {remate.imagen_url && <img src={remate.imagen_url} alt='' style={{ width:'100%', height:'100%', objectFit:'cover' }} />}
+                </div>
+                <div style={{ flex:1 }}>
+                  <p style={{ fontWeight:'500', fontSize:'14px', marginBottom:'3px' }}>{remate.titulo}</p>
+                  <p style={{ fontSize:'12px', color:'#999' }}>{remate.categoria} · {remate.ubicacion}</p>
+                </div>
+                <div style={{ textAlign:'right' }}>
+                  <p style={{ fontSize:'16px', fontWeight:'500', marginBottom:'4px' }}>S/ {Number(remate.precio_actual).toLocaleString()}</p>
+                  <span style={{ fontSize:'11px', background: badge.bg, color: badge.color, padding:'2px 8px', borderRadius:'20px' }}>
+                    {badge.texto}
+                  </span>
+                </div>
+                <a href={'/remate/' + remate.id} style={{ fontSize:'12px', color:'#1D9E75', textDecoration:'none', padding:'6px 12px', border:'1px solid #1D9E75', borderRadius:'8px' }}>Ver</a>
+              </div>
+
+              {/* OPCIONES PARA REMATES SIN OFERTA */}
+              {esSinOferta && (
+                <div style={{ marginTop:'12px', paddingTop:'12px', borderTop:'1px solid #f5f5f5' }}>
+                  <p style={{ fontSize:'12px', color:'#999', marginBottom:'10px' }}>
+                    Esta publicación concluyó sin recibir ofertas.
+                  </p>
+
+                  {/* FORMULARIO DE EDICION */}
+                  {esEditando ? (
+                    <div style={{ background:'#f9f9f9', borderRadius:'8px', padding:'12px', marginBottom:'10px' }}>
+                      <p style={{ fontSize:'12px', fontWeight:'500', color:'#444', marginBottom:'8px' }}>Editar publicación</p>
+                      <input value={formEditar.titulo} onChange={e => setFormEditar({...formEditar, titulo: e.target.value})}
+                        placeholder='Título' style={campo} />
+                      <textarea value={formEditar.descripcion} onChange={e => setFormEditar({...formEditar, descripcion: e.target.value})}
+                        placeholder='Descripción' style={{ ...campo, height:'60px', resize:'vertical' }} />
+                      <input type='number' value={formEditar.precio_inicial} onChange={e => setFormEditar({...formEditar, precio_inicial: e.target.value})}
+                        placeholder='Nuevo precio (S/)' style={campo} />
+                      <div style={{ display:'flex', gap:'8px' }}>
+                        <button onClick={() => setEditando(null)}
+                          style={{ flex:1, padding:'8px', borderRadius:'8px', border:'1px solid #ddd', background:'transparent', fontSize:'13px', cursor:'pointer', color:'#666' }}>
+                          Cancelar
+                        </button>
+                        <button onClick={() => guardarEdicion(remate.id)} disabled={guardando}
+                          style={{ flex:1, padding:'8px', borderRadius:'8px', border:'none', background:'#1D9E75', color:'white', fontSize:'13px', cursor:'pointer', fontWeight:'500' }}>
+                          {guardando ? 'Guardando...' : 'Guardar cambios'}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ display:'flex', gap:'8px' }}>
+                      <button onClick={() => { setEditando(remate.id); setFormEditar({ titulo: remate.titulo, descripcion: remate.descripcion, precio_inicial: remate.precio_inicial }) }}
+                        style={{ flex:1, padding:'8px', borderRadius:'8px', border:'1px solid #ddd', background:'transparent', fontSize:'13px', cursor:'pointer', color:'#444' }}>
+                        Modificar publicación
+                      </button>
+                      <button onClick={() => republicar(remate)}
+                        style={{ flex:1, padding:'8px', borderRadius:'8px', border:'none', background:'#1D9E75', color:'white', fontSize:'13px', cursor:'pointer', fontWeight:'500' }}>
+                        Republicar (1 crédito)
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
-            <div style={{ flex:1 }}>
-              <p style={{ fontWeight:'500', fontSize:'14px', marginBottom:'3px' }}>{remate.titulo}</p>
-              <p style={{ fontSize:'12px', color:'#999' }}>{remate.categoria} · {remate.ubicacion}</p>
-            </div>
-            <div style={{ textAlign:'right' }}>
-              <p style={{ fontSize:'16px', fontWeight:'500', marginBottom:'4px' }}>S/ {Number(remate.precio_actual).toLocaleString()}</p>
-              <span style={{ fontSize:'11px', background: remate.activo ? '#E1F5EE' : '#f5f5f5', color: remate.activo ? '#085041' : '#999', padding:'2px 8px', borderRadius:'20px' }}>
-                {remate.activo ? 'Activo' : 'Finalizado'}
-              </span>
-            </div>
-            <a href={'/remate/' + remate.id} style={{ fontSize:'12px', color:'#1D9E75', textDecoration:'none', padding:'6px 12px', border:'1px solid #1D9E75', borderRadius:'8px' }}>Ver</a>
-          </div>
-        ))}
+          )
+        })}
 
         {totalPaginas > 1 && (
           <div style={{ display:'flex', justifyContent:'center', gap:'8px', marginTop:'24px', flexWrap:'wrap' }}>
