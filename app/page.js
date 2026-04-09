@@ -143,7 +143,7 @@ export default function Home() {
                 transition:'background 0.15s',
               }}>
               <span style={{ fontSize:'24px', lineHeight:1 }}>{cat.icono}</span>
-              <span style={{ fontSize:'11px', fontWeight:'500', textAlign:'center', whiteSpace:'nowrap' }}>{cat.nombre}</span>
+              <span style={{ fontSize:'13px', fontWeight:'700', textAlign:'center', whiteSpace:'nowrap' }}>{cat.nombre}</span>
             </a>
           ))}
         </div>
