@@ -7,6 +7,42 @@ import Navbar from './Navbar'
 const CATEGORIAS = ['Antiguedades', 'Coleccionables', 'Electronica', 'Filatelia', 'Juguetes', 'Numismatica', 'Relojes', 'Ropa y accesorios', 'Otros']
 const POR_PAGINA = 12
 
+function TiempoRestante({ fechaFin, tipoPub }) {
+  const [texto, setTexto] = useState('')
+
+  useEffect(() => {
+    function calcular() {
+      const fin = new Date(fechaFin).getTime()
+      const diff = Math.max(0, fin - Date.now())
+      if (diff === 0) { setTexto('Finalizado'); return }
+
+      if (tipoPub === 'precio_fijo') {
+        const dias = Math.ceil(diff / (1000 * 60 * 60 * 24))
+        setTexto(dias === 1 ? '1 día restante' : `${dias} días restantes`)
+      } else {
+        const h = Math.floor(diff / 3600000)
+        const m = Math.floor((diff % 3600000) / 60000)
+        const s = Math.floor((diff % 60000) / 1000)
+        if (h > 24) {
+          const dias = Math.floor(h / 24)
+          setTexto(dias === 1 ? '1 día restante' : `${dias} días restantes`)
+        } else {
+          setTexto(`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`)
+        }
+      }
+    }
+    calcular()
+    const tick = setInterval(calcular, 1000)
+    return () => clearInterval(tick)
+  }, [fechaFin, tipoPub])
+
+  return (
+    <span style={{ fontSize:'11px', color: texto === 'Finalizado' ? '#999' : '#A32D2D', fontWeight:'500' }}>
+      {texto}
+    </span>
+  )
+}
+
 export default function Home() {
   const [remates, setRemates] = useState([])
   const [busqueda, setBusqueda] = useState('')
@@ -91,9 +127,9 @@ export default function Home() {
               <div style={{ padding:'12px' }}>
                 <p style={{ fontWeight:'500', fontSize:'14px', marginBottom:'4px' }}>{remate.titulo}</p>
                 <p style={{ fontSize:'11px', color:'#999', marginBottom:'6px' }}>{remate.categoria}</p>
-                <p style={{ fontSize:'18px', fontWeight:'500' }}>S/ {Number(remate.precio_actual).toLocaleString()}</p>
-                <div style={{ display:'flex', justifyContent:'space-between', marginTop:'6px' }}>
-                  <span style={{ fontSize:'11px', color:'#999' }}>Inicio: S/ {Number(remate.precio_inicial).toLocaleString()}</span>
+                <p style={{ fontSize:'18px', fontWeight:'500', marginBottom:'6px' }}>S/ {Number(remate.precio_actual).toLocaleString()}</p>
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:'4px' }}>
+                  <TiempoRestante fechaFin={remate.fecha_fin} tipoPub={remate.tipo_publicacion} />
                   <span style={{ fontSize:'11px', background: remate.tipo_publicacion === 'precio_fijo' ? '#E6F1FB' : '#FCEBEB', color: remate.tipo_publicacion === 'precio_fijo' ? '#185FA5' : '#A32D2D', padding:'2px 8px', borderRadius:'20px' }}>
                     {remate.tipo_publicacion === 'precio_fijo' ? 'Venta directa' : 'En vivo'}
                   </span>
