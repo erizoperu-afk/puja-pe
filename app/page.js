@@ -15,7 +15,6 @@ function TiempoRestante({ fechaFin, tipoPub }) {
       const fin = new Date(fechaFin).getTime()
       const diff = Math.max(0, fin - Date.now())
       if (diff === 0) { setTexto('Finalizado'); return }
-
       if (tipoPub === 'precio_fijo') {
         const dias = Math.ceil(diff / (1000 * 60 * 60 * 24))
         setTexto(dias === 1 ? '1 día restante' : `${dias} días restantes`)
@@ -43,8 +42,34 @@ function TiempoRestante({ fechaFin, tipoPub }) {
   )
 }
 
+function TarjetaRemate({ remate }) {
+  return (
+    <a href={'/remate/' + remate.id} style={{ background:'#fff', border:'1px solid #eee', borderRadius:'12px', overflow:'hidden', textDecoration:'none', color:'black', display:'block' }}>
+      <div style={{ height:'140px', background:'#f5f5f5', overflow:'hidden' }}>
+        {remate.imagen_url
+          ? <img src={remate.imagen_url} alt={remate.titulo} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+          : <div style={{ width:'100%', height:'100%', background:'#e0e0e0' }}></div>
+        }
+      </div>
+      <div style={{ padding:'12px' }}>
+        <p style={{ fontWeight:'500', fontSize:'14px', marginBottom:'4px' }}>{remate.titulo}</p>
+        <p style={{ fontSize:'11px', color:'#999', marginBottom:'6px' }}>{remate.categoria}</p>
+        <p style={{ fontSize:'18px', fontWeight:'500', marginBottom:'6px' }}>S/ {Number(remate.precio_actual).toLocaleString()}</p>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:'4px' }}>
+          <TiempoRestante fechaFin={remate.fecha_fin} tipoPub={remate.tipo_publicacion} />
+          <span style={{ fontSize:'11px', background: remate.tipo_publicacion === 'precio_fijo' ? '#E6F1FB' : '#FCEBEB', color: remate.tipo_publicacion === 'precio_fijo' ? '#185FA5' : '#A32D2D', padding:'2px 8px', borderRadius:'20px' }}>
+            {remate.tipo_publicacion === 'precio_fijo' ? 'Venta directa' : 'En vivo'}
+          </span>
+        </div>
+      </div>
+    </a>
+  )
+}
+
 export default function Home() {
   const [remates, setRemates] = useState([])
+  const [hot, setHot] = useState([])
+  const [nuevos, setNuevos] = useState([])
   const [busqueda, setBusqueda] = useState('')
   const [cargando, setCargando] = useState(true)
   const [pagina, setPagina] = useState(1)
@@ -56,7 +81,25 @@ export default function Home() {
         .select('*')
         .eq('activo', true)
         .order('created_at', { ascending: false })
-      setRemates(data || [])
+
+      const rematesActivos = data || []
+      setRemates(rematesActivos)
+
+      const { data: pujasData } = await supabase
+        .from('pujas')
+        .select('remate_id')
+
+      const conteo = {}
+      pujasData?.forEach(p => { conteo[p.remate_id] = (conteo[p.remate_id] || 0) + 1 })
+
+      const conPujas = rematesActivos
+        .map(r => ({ ...r, numPujas: conteo[r.id] || 0 }))
+        .filter(r => r.numPujas > 0)
+        .sort((a, b) => b.numPujas - a.numPujas)
+        .slice(0, 6)
+
+      setHot(conPujas)
+      setNuevos(rematesActivos.slice(0, 20))
       setCargando(false)
     }
     cargarRemates()
@@ -82,6 +125,7 @@ export default function Home() {
     <main style={{ fontFamily:'sans-serif' }}>
       <Navbar />
 
+      {/* CATEGORIAS */}
       <div style={{ background:'#fff', borderBottom:'1px solid #eee', padding:'0 24px', overflowX:'auto' }}>
         <div style={{ display:'flex', gap:'4px', maxWidth:'1200px', margin:'0 auto' }}>
           {CATEGORIAS.map(cat => (
@@ -93,6 +137,7 @@ export default function Home() {
         </div>
       </div>
 
+      {/* HERO */}
       <section style={{ background:'#f9f9f9', padding:'48px 24px', textAlign:'center', borderBottom:'1px solid #eee' }}>
         <h1 style={{ fontSize:'28px', fontWeight:'500', marginBottom:'10px' }}>Remata y compra en todo el Peru</h1>
         <p style={{ color:'#666', marginBottom:'24px' }}>Encuentra las mejores ofertas o publica lo que ya no usas</p>
@@ -103,10 +148,53 @@ export default function Home() {
         </div>
       </section>
 
-      <section style={{ padding:'24px', maxWidth:'1200px', margin:'0 auto' }}>
+      {/* LOS REMATES MÁS HOT */}
+      {!cargando && hot.length > 0 && (
+        <section style={{ padding:'32px 24px', maxWidth:'1200px', margin:'0 auto' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:'10px', marginBottom:'16px' }}>
+            <span style={{ fontSize:'22px' }}>🔥</span>
+            <h2 style={{ fontSize:'20px', fontWeight:'700' }}>Los Remates Más Hot</h2>
+            <span style={{ fontSize:'13px', color:'#999' }}>— Los que más pujas tienen ahora</span>
+          </div>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(220px, 1fr))', gap:'16px' }}>
+            {hot.map(remate => (
+              <div key={remate.id} style={{ position:'relative' }}>
+                <div style={{ position:'absolute', top:'8px', left:'8px', zIndex:1, background:'#E24B4A', color:'white', fontSize:'11px', fontWeight:'500', padding:'3px 8px', borderRadius:'20px' }}>
+                  🔥 {remate.numPujas} {remate.numPujas === 1 ? 'puja' : 'pujas'}
+                </div>
+                <TarjetaRemate remate={remate} />
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* LO NUEVO */}
+      {!cargando && nuevos.length > 0 && (
+        <section style={{ padding:'32px 24px', maxWidth:'1200px', margin:'0 auto', borderTop:'1px solid #eee' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:'10px', marginBottom:'16px' }}>
+            <span style={{ fontSize:'22px' }}>✨</span>
+            <h2 style={{ fontSize:'20px', fontWeight:'700' }}>Lo Nuevo</h2>
+            <span style={{ fontSize:'13px', color:'#999' }}>— Las últimas 20 publicaciones</span>
+          </div>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(220px, 1fr))', gap:'16px' }}>
+            {nuevos.map(remate => (
+              <div key={remate.id} style={{ position:'relative' }}>
+                <div style={{ position:'absolute', top:'8px', left:'8px', zIndex:1, background:'#1D9E75', color:'white', fontSize:'11px', fontWeight:'500', padding:'3px 8px', borderRadius:'20px' }}>
+                  ✨ Nuevo
+                </div>
+                <TarjetaRemate remate={remate} />
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* TODOS LOS REMATES */}
+      <section style={{ padding:'32px 24px', maxWidth:'1200px', margin:'0 auto', borderTop:'1px solid #eee' }}>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'16px' }}>
-          <h2 style={{ fontSize:'16px', fontWeight:'500' }}>
-            Remates activos ({cargando ? '...' : rematesFiltrados.length})
+          <h2 style={{ fontSize:'20px', fontWeight:'700' }}>
+            Todos los remates ({cargando ? '...' : rematesFiltrados.length})
           </h2>
           {totalPaginas > 1 && (
             <span style={{ fontSize:'13px', color:'#999' }}>Página {pagina} de {totalPaginas}</span>
@@ -116,27 +204,7 @@ export default function Home() {
         {cargando && <div style={{ textAlign:'center', padding:'40px', color:'#999' }}>Cargando remates...</div>}
 
         <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(220px, 1fr))', gap:'16px' }}>
-          {rematesPagina.map((remate) => (
-            <a key={remate.id} href={'/remate/' + remate.id} style={{ background:'#fff', border:'1px solid #eee', borderRadius:'12px', overflow:'hidden', textDecoration:'none', color:'black', display:'block' }}>
-              <div style={{ height:'140px', background:'#f5f5f5', overflow:'hidden' }}>
-                {remate.imagen_url
-                  ? <img src={remate.imagen_url} alt={remate.titulo} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
-                  : <div style={{ width:'100%', height:'100%', background:'#e0e0e0' }}></div>
-                }
-              </div>
-              <div style={{ padding:'12px' }}>
-                <p style={{ fontWeight:'500', fontSize:'14px', marginBottom:'4px' }}>{remate.titulo}</p>
-                <p style={{ fontSize:'11px', color:'#999', marginBottom:'6px' }}>{remate.categoria}</p>
-                <p style={{ fontSize:'18px', fontWeight:'500', marginBottom:'6px' }}>S/ {Number(remate.precio_actual).toLocaleString()}</p>
-                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:'4px' }}>
-                  <TiempoRestante fechaFin={remate.fecha_fin} tipoPub={remate.tipo_publicacion} />
-                  <span style={{ fontSize:'11px', background: remate.tipo_publicacion === 'precio_fijo' ? '#E6F1FB' : '#FCEBEB', color: remate.tipo_publicacion === 'precio_fijo' ? '#185FA5' : '#A32D2D', padding:'2px 8px', borderRadius:'20px' }}>
-                    {remate.tipo_publicacion === 'precio_fijo' ? 'Venta directa' : 'En vivo'}
-                  </span>
-                </div>
-              </div>
-            </a>
-          ))}
+          {rematesPagina.map(remate => <TarjetaRemate key={remate.id} remate={remate} />)}
         </div>
 
         {totalPaginas > 1 && (
