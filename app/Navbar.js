@@ -3,15 +3,22 @@
 import { useState, useEffect } from 'react'
 import { supabase } from './supabase'
 
+const ADMIN_EMAIL = 'paulq@hotmail.com'
+
 export default function Navbar() {
   const [usuario, setUsuario] = useState(null)
+  const [esAdmin, setEsAdmin] = useState(false)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUsuario(session?.user ?? null)
+      setEsAdmin(session?.user?.email === ADMIN_EMAIL)
     })
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => { setUsuario(session?.user ?? null) }
+      (_event, session) => {
+        setUsuario(session?.user ?? null)
+        setEsAdmin(session?.user?.email === ADMIN_EMAIL)
+      }
     )
     return () => subscription.unsubscribe()
   }, [])
@@ -44,6 +51,10 @@ export default function Navbar() {
         <span style={{ fontSize:'13px', color:'#666' }}>Hola, {usuario.user_metadata?.nombre || usuario.email}</span>
         <a href='/comprador' style={{ padding:'7px 16px', borderRadius:'8px', border:'1px solid #ddd', color:'#444', textDecoration:'none', fontSize:'13px' }}>Comprador</a>
         <a href='/vendedor' style={{ padding:'7px 16px', borderRadius:'8px', border:'1px solid #1D9E75', color:'#1D9E75', textDecoration:'none', fontSize:'13px', fontWeight:'500' }}>Vendedor</a>
+        <a href='/mensajes' style={{ padding:'7px 16px', borderRadius:'8px', border:'1px solid #ddd', color:'#444', textDecoration:'none', fontSize:'13px' }}>Soporte</a>
+        {esAdmin && (
+          <a href='/admin' style={{ padding:'7px 16px', borderRadius:'8px', border:'none', background:'#1D9E75', color:'white', textDecoration:'none', fontSize:'13px', fontWeight:'500' }}>Admin</a>
+        )}
         <button onClick={cerrarSesion} style={{ padding:'7px 16px', borderRadius:'8px', border:'1px solid #ddd', background:'transparent', cursor:'pointer', fontSize:'13px' }}>Cerrar sesion</button>
       </div>
     </nav>
