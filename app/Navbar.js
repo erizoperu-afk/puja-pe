@@ -28,12 +28,19 @@ export default function Navbar() {
     window.location.href = '/'
   }
 
+  const Logo = () => (
+    <a href='/' style={{ display:'flex', alignItems:'center', gap:'8px', textDecoration:'none', color:'black' }}>
+      <span style={{ fontSize:'22px', fontWeight:'500' }}>
+        puja<span style={{ color:'#1D9E75' }}>.pe</span>
+      </span>
+      <span style={{ fontSize:'10px', fontWeight:'700', background:'#1D9E75', color:'white', padding:'2px 7px', borderRadius:'20px', letterSpacing:'0.5px' }}>BETA</span>
+    </a>
+  )
+
   if (!usuario) {
     return (
       <nav style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'14px 24px', borderBottom:'1px solid #eee', background:'#fff' }}>
-        <a href='/' style={{ fontSize:'22px', fontWeight:'500', textDecoration:'none', color:'black' }}>
-          puja<span style={{ color:'#1D9E75' }}>.pe</span>
-        </a>
+        <Logo />
         <div style={{ display:'flex', gap:'10px' }}>
           <a href='/login' style={{ padding:'7px 16px', borderRadius:'8px', border:'1px solid #ddd', textDecoration:'none', color:'black', fontSize:'13px' }}>Ingresar</a>
           <a href='/login' style={{ padding:'7px 16px', borderRadius:'8px', border:'none', background:'#1D9E75', color:'white', textDecoration:'none', fontSize:'13px', fontWeight:'500' }}>Publicar remate</a>
@@ -44,9 +51,7 @@ export default function Navbar() {
 
   return (
     <nav style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'14px 24px', borderBottom:'1px solid #eee', background:'#fff' }}>
-      <a href='/' style={{ fontSize:'22px', fontWeight:'500', textDecoration:'none', color:'black' }}>
-        puja<span style={{ color:'#1D9E75' }}>.pe</span>
-      </a>
+      <Logo />
       <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
         <span style={{ fontSize:'13px', color:'#666' }}>Hola, {usuario.user_metadata?.nombre || usuario.email}</span>
         <a href='/comprador' style={{ padding:'7px 16px', borderRadius:'8px', border:'1px solid #ddd', color:'#444', textDecoration:'none', fontSize:'13px' }}>Comprador</a>
