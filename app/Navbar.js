@@ -5,6 +5,25 @@ import { supabase } from './supabase'
 
 const ADMIN_EMAIL = 'paulq@hotmail.com'
 
+function Logo() {
+  return (
+    <a href='/' style={{ textDecoration:'none', display:'flex', alignItems:'center' }}>
+      <svg width="180" height="44" viewBox="0 0 180 44" xmlns="http://www.w3.org/2000/svg">
+        <rect x="0" y="2" width="40" height="40" rx="10" fill="#1D9E75"/>
+        <g transform="translate(4,4)">
+          <rect x="18" y="6" width="20" height="7" rx="3" fill="white" transform="rotate(-40 18 6)"/>
+          <rect x="2" y="22" width="7" height="16" rx="3" fill="white" transform="rotate(-40 2 22)"/>
+          <rect x="21" y="4" width="9" height="5" rx="2" fill="#9FE1CB" transform="rotate(-40 21 4)"/>
+        </g>
+        <text x="50" y="22" style={{fontSize:'22px', fontWeight:'700', fill:'#1a1a1a', fontFamily:'sans-serif'}}>puja<tspan fill="#1D9E75">.pe</tspan></text>
+        <text x="51" y="36" style={{fontSize:'11px', fill:'#888', fontFamily:'sans-serif', letterSpacing:'2px'}}>REMATES ONLINE</text>
+        <rect x="134" y="26" width="38" height="16" rx="8" fill="#E1F5EE"/>
+        <text x="153" y="38" textAnchor="middle" style={{fontSize:'9px', fontWeight:'700', fill:'#085041', fontFamily:'sans-serif', letterSpacing:'1px'}}>BETA</text>
+      </svg>
+    </a>
+  )
+}
+
 export default function Navbar() {
   const [usuario, setUsuario] = useState(null)
   const [esAdmin, setEsAdmin] = useState(false)
@@ -28,18 +47,9 @@ export default function Navbar() {
     window.location.href = '/'
   }
 
-  const Logo = () => (
-    <a href='/' style={{ display:'flex', alignItems:'center', gap:'8px', textDecoration:'none', color:'black' }}>
-      <span style={{ fontSize:'22px', fontWeight:'500' }}>
-        puja<span style={{ color:'#1D9E75' }}>.pe</span>
-      </span>
-      <span style={{ fontSize:'10px', fontWeight:'700', background:'#1D9E75', color:'white', padding:'2px 7px', borderRadius:'20px', letterSpacing:'0.5px' }}>BETA</span>
-    </a>
-  )
-
   if (!usuario) {
     return (
-      <nav style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'14px 24px', borderBottom:'1px solid #eee', background:'#fff' }}>
+      <nav style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 24px', borderBottom:'1px solid #eee', background:'#fff' }}>
         <Logo />
         <div style={{ display:'flex', gap:'10px' }}>
           <a href='/login' style={{ padding:'7px 16px', borderRadius:'8px', border:'1px solid #ddd', textDecoration:'none', color:'black', fontSize:'13px' }}>Ingresar</a>
@@ -50,7 +60,7 @@ export default function Navbar() {
   }
 
   return (
-    <nav style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'14px 24px', borderBottom:'1px solid #eee', background:'#fff' }}>
+    <nav style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 24px', borderBottom:'1px solid #eee', background:'#fff' }}>
       <Logo />
       <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
         <span style={{ fontSize:'13px', color:'#666' }}>Hola, {usuario.user_metadata?.nombre || usuario.email}</span>
