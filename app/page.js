@@ -5,11 +5,13 @@ import { supabase } from './supabase'
 import Navbar from './Navbar'
 
 const CATEGORIAS = ['Antiguedades', 'Coleccionables', 'Electronica', 'Filatelia', 'Juguetes', 'Numismatica', 'Relojes', 'Ropa y accesorios', 'Otros']
+const POR_PAGINA = 12
 
 export default function Home() {
   const [remates, setRemates] = useState([])
   const [busqueda, setBusqueda] = useState('')
   const [cargando, setCargando] = useState(true)
+  const [pagina, setPagina] = useState(1)
 
   useEffect(() => {
     async function cargarRemates() {
@@ -28,6 +30,17 @@ export default function Home() {
     r.titulo?.toLowerCase().includes(busqueda.toLowerCase()) ||
     r.categoria?.toLowerCase().includes(busqueda.toLowerCase())
   )
+
+  const totalPaginas = Math.ceil(rematesFiltrados.length / POR_PAGINA)
+  const rematesPagina = rematesFiltrados.slice((pagina - 1) * POR_PAGINA, pagina * POR_PAGINA)
+
+  function handleBusqueda(e) {
+    setBusqueda(e.target.value)
+    setPagina(1)
+  }
+
+  const btnPag = { padding:'8px 16px', borderRadius:'8px', border:'1px solid #ddd', background:'#fff', cursor:'pointer', fontSize:'13px', color:'#666' }
+  const btnPagActivo = { ...btnPag, background:'#1D9E75', color:'white', border:'1px solid #1D9E75', fontWeight:'500' }
 
   return (
     <main style={{ fontFamily:'sans-serif' }}>
@@ -48,19 +61,26 @@ export default function Home() {
         <h1 style={{ fontSize:'28px', fontWeight:'500', marginBottom:'10px' }}>Remata y compra en todo el Peru</h1>
         <p style={{ color:'#666', marginBottom:'24px' }}>Encuentra las mejores ofertas o publica lo que ya no usas</p>
         <div style={{ display:'flex', gap:'10px', maxWidth:'480px', margin:'0 auto' }}>
-          <input type='text' placeholder='Busca laptops, celulares, autos...' value={busqueda} onChange={e => setBusqueda(e.target.value)}
+          <input type='text' placeholder='Busca laptops, celulares, autos...' value={busqueda} onChange={handleBusqueda}
             style={{ flex:1, padding:'10px 14px', borderRadius:'8px', border:'1px solid #ddd', fontSize:'14px' }} />
           <button style={{ padding:'10px 20px', background:'#1D9E75', color:'white', border:'none', borderRadius:'8px', cursor:'pointer', fontWeight:'500' }}>Buscar</button>
         </div>
       </section>
 
       <section style={{ padding:'24px', maxWidth:'1200px', margin:'0 auto' }}>
-        <h2 style={{ fontSize:'16px', fontWeight:'500', marginBottom:'16px' }}>
-          Remates activos ({cargando ? '...' : rematesFiltrados.length})
-        </h2>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'16px' }}>
+          <h2 style={{ fontSize:'16px', fontWeight:'500' }}>
+            Remates activos ({cargando ? '...' : rematesFiltrados.length})
+          </h2>
+          {totalPaginas > 1 && (
+            <span style={{ fontSize:'13px', color:'#999' }}>Página {pagina} de {totalPaginas}</span>
+          )}
+        </div>
+
         {cargando && <div style={{ textAlign:'center', padding:'40px', color:'#999' }}>Cargando remates...</div>}
+
         <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(220px, 1fr))', gap:'16px' }}>
-          {rematesFiltrados.map((remate) => (
+          {rematesPagina.map((remate) => (
             <a key={remate.id} href={'/remate/' + remate.id} style={{ background:'#fff', border:'1px solid #eee', borderRadius:'12px', overflow:'hidden', textDecoration:'none', color:'black', display:'block' }}>
               <div style={{ height:'140px', background:'#f5f5f5', overflow:'hidden' }}>
                 {remate.imagen_url
@@ -80,6 +100,18 @@ export default function Home() {
             </a>
           ))}
         </div>
+
+        {totalPaginas > 1 && (
+          <div style={{ display:'flex', justifyContent:'center', gap:'8px', marginTop:'32px', flexWrap:'wrap' }}>
+            <button onClick={() => setPagina(p => Math.max(1, p - 1))} disabled={pagina === 1}
+              style={{ ...btnPag, opacity: pagina === 1 ? 0.4 : 1 }}>← Anterior</button>
+            {Array.from({ length: totalPaginas }, (_, i) => i + 1).map(n => (
+              <button key={n} onClick={() => setPagina(n)} style={n === pagina ? btnPagActivo : btnPag}>{n}</button>
+            ))}
+            <button onClick={() => setPagina(p => Math.min(totalPaginas, p + 1))} disabled={pagina === totalPaginas}
+              style={{ ...btnPag, opacity: pagina === totalPaginas ? 0.4 : 1 }}>Siguiente →</button>
+          </div>
+        )}
       </section>
     </main>
   )
