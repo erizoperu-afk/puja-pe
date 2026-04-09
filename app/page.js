@@ -94,7 +94,9 @@ export default function Home() {
                 <p style={{ fontSize:'18px', fontWeight:'500' }}>S/ {Number(remate.precio_actual).toLocaleString()}</p>
                 <div style={{ display:'flex', justifyContent:'space-between', marginTop:'6px' }}>
                   <span style={{ fontSize:'11px', color:'#999' }}>Inicio: S/ {Number(remate.precio_inicial).toLocaleString()}</span>
-                  <span style={{ fontSize:'11px', background:'#FCEBEB', color:'#A32D2D', padding:'2px 8px', borderRadius:'20px' }}>En vivo</span>
+                  <span style={{ fontSize:'11px', background: remate.tipo_publicacion === 'precio_fijo' ? '#E6F1FB' : '#FCEBEB', color: remate.tipo_publicacion === 'precio_fijo' ? '#185FA5' : '#A32D2D', padding:'2px 8px', borderRadius:'20px' }}>
+                    {remate.tipo_publicacion === 'precio_fijo' ? 'Venta directa' : 'En vivo'}
+                  </span>
                 </div>
               </div>
             </a>
