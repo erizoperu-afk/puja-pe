@@ -117,7 +117,7 @@ export default function PanelVendedor() {
       : { texto: 'Sin oferta', bg: '#FCEBEB', color: '#A32D2D' }
 
     return (
-      <div style={{ background: concluido ? '#fafafa' : '#fff', border: concluido ? '1px solid #eee' : '1px solid #eee', borderRadius:'12px', padding:'16px', marginBottom:'10px' }}>
+      <div style={{ background: concluido ? '#fafafa' : '#fff', border:'1px solid #eee', borderRadius:'12px', padding:'16px', marginBottom:'10px' }}>
         <div style={{ display:'flex', alignItems:'center', gap:'16px' }}>
           <div style={{ width:'56px', height:'56px', background:'#f5f5f5', borderRadius:'8px', border:'1px solid #eee', flexShrink:0, overflow:'hidden' }}>
             {remate.imagen_url && <img src={remate.imagen_url} alt='' style={{ width:'100%', height:'100%', objectFit:'cover' }} />}
@@ -125,13 +125,16 @@ export default function PanelVendedor() {
           <div style={{ flex:1 }}>
             <p style={{ fontWeight:'500', fontSize:'14px', marginBottom:'3px' }}>{remate.titulo}</p>
             <p style={{ fontSize:'12px', color:'#999' }}>{remate.categoria} · {remate.ubicacion}</p>
-            {numPujas > 0 && (
-              <p style={{ fontSize:'12px', color:'#1D9E75', marginTop:'3px' }}>
-                {numPujas} {numPujas === 1 ? 'puja' : 'pujas'} recibidas
-              </p>
-            )}
           </div>
-          <div style={{ textAlign:'right' }}>
+
+          {/* COLUMNA PUJAS */}
+          <div style={{ textAlign:'center', minWidth:'70px' }}>
+            <p style={{ fontSize:'11px', color:'#999', marginBottom:'4px' }}>Pujas</p>
+            <p style={{ fontSize:'22px', fontWeight:'500', color: numPujas > 0 ? '#1D9E75' : '#ccc' }}>{numPujas}</p>
+          </div>
+
+          {/* PRECIO Y ESTADO */}
+          <div style={{ textAlign:'right', minWidth:'110px' }}>
             <p style={{ fontSize:'11px', color:'#999', marginBottom:'2px' }}>
               {estado === 'activo' ? 'Precio actual' : 'Precio final'}
             </p>
@@ -140,6 +143,7 @@ export default function PanelVendedor() {
               {badge.texto}
             </span>
           </div>
+
           <a href={'/remate/' + remate.id} style={{ fontSize:'12px', color:'#1D9E75', textDecoration:'none', padding:'6px 12px', border:'1px solid #1D9E75', borderRadius:'8px' }}>Ver</a>
         </div>
 
@@ -226,7 +230,6 @@ export default function PanelVendedor() {
           ))}
         </div>
 
-        {/* REMATES ACTIVOS */}
         {rematesActivos.length > 0 && (
           <>
             <h2 style={{ fontSize:'15px', fontWeight:'500', marginBottom:'14px' }}>Publicaciones activas</h2>
@@ -234,7 +237,6 @@ export default function PanelVendedor() {
           </>
         )}
 
-        {/* REMATES CONCLUIDOS */}
         {rematesConcluidos.length > 0 && (
           <>
             <h2 style={{ fontSize:'15px', fontWeight:'500', marginBottom:'14px', marginTop:'28px', color:'#999' }}>Publicaciones concluidas</h2>
