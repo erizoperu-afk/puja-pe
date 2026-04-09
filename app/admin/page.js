@@ -5,9 +5,10 @@ import { supabase } from '../supabase'
 import Navbar from '../Navbar'
 
 export default function PanelAdmin() {
-  const [tab, setTab] = useState('stats')
+  const [tab, setTab] = useState('usuarios')
   const [usuarios, setUsuarios] = useState([])
   const [remates, setRemates] = useState([])
+  const [mensajes, setMensajes] = useState([])
   const [stats, setStats] = useState({})
   const [cargando, setCargando] = useState(true)
   const [autorizado, setAutorizado] = useState(false)
@@ -24,33 +25,31 @@ export default function PanelAdmin() {
   ])
   const [editandoPaquete, setEditandoPaquete] = useState(null)
   const [sessionUser, setSessionUser] = useState(null)
+  const [respuesta, setRespuesta] = useState({})
+  const [respondiendo, setRespondiendo] = useState(null)
 
-  useEffect(() => {
-    async function verificarAdmin() {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) { window.location.href = '/login'; return }
-      setSessionUser(session.user)
-      const { data: admin } = await supabase
-        .from('admins')
-        .select('email')
-        .eq('email', session.user.email)
-        .single()
-      if (!admin) { window.location.href = '/'; return }
-      setAutorizado(true)
-      cargarDatos()
-    }
-    verificarAdmin()
-  }, [])
+  useEffect(() => { verificarAdmin() }, [])
+
+  async function verificarAdmin() {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) { window.location.href = '/login'; return }
+    setSessionUser(session.user)
+    const { data: admin } = await supabase
+      .from('admins').select('email').eq('email', session.user.email).single()
+    if (!admin) { window.location.href = '/'; return }
+    setAutorizado(true)
+    cargarDatos()
+  }
 
   async function cargarDatos() {
     const { data: usuariosData } = await supabase
       .from('usuarios').select('*').order('created_at', { ascending: false })
-    const { data: creditosData } = await supabase
-      .from('creditos').select('*')
+    const { data: creditosData } = await supabase.from('creditos').select('*')
     const { data: rematesData } = await supabase
       .from('remates').select('*').order('created_at', { ascending: false })
-    const { data: pujasData } = await supabase
-      .from('pujas').select('*')
+    const { data: pujasData } = await supabase.from('pujas').select('*')
+    const { data: mensajesData } = await supabase
+      .from('mensajes').select('*, usuarios(nickname)').order('created_at', { ascending: false })
 
     const usuariosConCreditos = (usuariosData || []).map(u => ({
       ...u,
@@ -61,6 +60,7 @@ export default function PanelAdmin() {
 
     setUsuarios(usuariosConCreditos)
     setRemates(rematesData || [])
+    setMensajes(mensajesData || [])
     setStats({
       totalUsuarios: usuariosData?.length || 0,
       totalRemates: rematesData?.length || 0,
@@ -70,38 +70,47 @@ export default function PanelAdmin() {
     setCargando(false)
   }
 
+  async function cargarMensajes() {
+    const { data } = await supabase
+      .from('mensajes').select('*, usuarios(nickname)').order('created_at', { ascending: false })
+    setMensajes(data || [])
+  }
+
+  async function responderMensaje(mensajeId) {
+    if (!respuesta[mensajeId]?.trim()) return
+    await supabase.from('mensajes').update({
+      respuesta: respuesta[mensajeId],
+      respondido: true,
+      respondido_at: new Date().toISOString()
+    }).eq('id', mensajeId)
+    setRespondiendo(null)
+    cargarMensajes()
+  }
+
   async function verDetalleUsuario(usuario, tipo) {
     setUsuarioDetalle(usuario)
     setModoDetalle(tipo)
     if (tipo === 'pujas') {
       const { data } = await supabase
         .from('pujas').select('*, remates(titulo, precio_actual)')
-        .eq('usuario_id', usuario.id)
-        .order('created_at', { ascending: false })
+        .eq('usuario_id', usuario.id).order('created_at', { ascending: false })
       setPujasPorUsuario(data || [])
     } else {
       const { data } = await supabase
         .from('remates').select('*')
-        .eq('vendedor_id', usuario.id)
-        .order('created_at', { ascending: false })
+        .eq('vendedor_id', usuario.id).order('created_at', { ascending: false })
       setRematesPorUsuario(data || [])
     }
   }
 
   async function actualizarCreditos(usuarioId, nuevoSaldo) {
-    await supabase.from('creditos')
-      .update({ saldo: Number(nuevoSaldo) })
-      .eq('usuario_id', usuarioId)
+    await supabase.from('creditos').update({ saldo: Number(nuevoSaldo) }).eq('usuario_id', usuarioId)
     cargarDatos()
   }
 
   async function suspenderUsuario(usuarioId) {
-    await supabase.from('remates')
-      .update({ activo: false })
-      .eq('vendedor_id', usuarioId)
-    await supabase.from('creditos')
-      .update({ saldo: 0 })
-      .eq('usuario_id', usuarioId)
+    await supabase.from('remates').update({ activo: false }).eq('vendedor_id', usuarioId)
+    await supabase.from('creditos').update({ saldo: 0 }).eq('usuario_id', usuarioId)
     alert('Usuario suspendido — sus remates han sido desactivados y créditos en 0.')
     cargarDatos()
   }
@@ -120,6 +129,8 @@ export default function PanelAdmin() {
     setPaquetes(paquetes.map(p => p.id === id ? { ...p, ...editandoPaquete } : p))
     setEditandoPaquete(null)
   }
+
+  const mensajesPendientes = mensajes.filter(m => !m.respondido).length
 
   const estilo = {
     tab: (activo) => ({ padding:'8px 18px', borderRadius:'20px', border:'none', cursor:'pointer', fontSize:'13px', fontWeight:'500', background: activo ? '#1D9E75' : '#f5f5f5', color: activo ? '#fff' : '#666' }),
@@ -215,6 +226,12 @@ export default function PanelAdmin() {
         <div style={{ display:'flex', gap:'8px', marginBottom:'20px', flexWrap:'wrap' }}>
           <button style={estilo.tab(tab === 'usuarios')} onClick={() => setTab('usuarios')}>Usuarios</button>
           <button style={estilo.tab(tab === 'remates')} onClick={() => setTab('remates')}>Remates</button>
+          <button style={estilo.tab(tab === 'mensajes')} onClick={() => { setTab('mensajes'); cargarMensajes() }}>
+            Mensajes {mensajesPendientes > 0 &&
+              <span style={{ background:'#E24B4A', color:'white', borderRadius:'50%', padding:'1px 6px', fontSize:'11px', marginLeft:'4px' }}>
+                {mensajesPendientes}
+              </span>}
+          </button>
           <button style={estilo.tab(tab === 'beta')} onClick={() => setTab('beta')}>Modo BETA</button>
           <button style={estilo.tab(tab === 'paquetes')} onClick={() => setTab('paquetes')}>Paquetes</button>
         </div>
@@ -296,6 +313,61 @@ export default function PanelAdmin() {
                     </button>
                   )}
                 </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* MENSAJES */}
+        {tab === 'mensajes' && (
+          <div>
+            {mensajes.length === 0 && <div style={{ textAlign:'center', padding:'40px', color:'#999' }}>No hay mensajes.</div>}
+            {mensajes.map(m => (
+              <div key={m.id} style={{ background:'#fff', border: !m.respondido ? '1px solid #9FE1CB' : '1px solid #eee', borderRadius:'12px', padding:'20px', marginBottom:'12px' }}>
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:'12px' }}>
+                  <div>
+                    <p style={{ fontWeight:'500', fontSize:'14px', marginBottom:'4px' }}>{m.asunto}</p>
+                    <p style={{ fontSize:'12px', color:'#999' }}>
+                      {m.usuarios?.nickname} · {new Date(m.created_at).toLocaleDateString('es-PE', { day:'numeric', month:'long', hour:'2-digit', minute:'2-digit' })}
+                    </p>
+                  </div>
+                  <span style={{ fontSize:'11px', background: m.respondido ? '#E1F5EE' : '#FCEBEB', color: m.respondido ? '#085041' : '#A32D2D', padding:'2px 10px', borderRadius:'20px' }}>
+                    {m.respondido ? 'Respondido' : 'Pendiente'}
+                  </span>
+                </div>
+                <div style={{ background:'#f9f9f9', borderRadius:'8px', padding:'12px', marginBottom:'12px' }}>
+                  <p style={{ fontSize:'13px', color:'#444', lineHeight:'1.6' }}>{m.mensaje}</p>
+                </div>
+                {m.respuesta && (
+                  <div style={{ background:'#E1F5EE', borderRadius:'8px', padding:'12px', marginBottom:'12px', border:'1px solid #9FE1CB' }}>
+                    <p style={{ fontSize:'12px', color:'#085041', marginBottom:'4px', fontWeight:'500' }}>Tu respuesta:</p>
+                    <p style={{ fontSize:'13px', color:'#085041', lineHeight:'1.6' }}>{m.respuesta}</p>
+                  </div>
+                )}
+                {!m.respondido && (
+                  respondiendo === m.id ? (
+                    <div>
+                      <textarea value={respuesta[m.id] || ''} onChange={e => setRespuesta({...respuesta, [m.id]: e.target.value})}
+                        placeholder='Escribe tu respuesta...'
+                        style={{ width:'100%', padding:'10px 12px', borderRadius:'8px', border:'1px solid #ddd', fontSize:'13px', height:'80px', resize:'vertical', boxSizing:'border-box', marginBottom:'8px' }} />
+                      <div style={{ display:'flex', gap:'8px' }}>
+                        <button onClick={() => setRespondiendo(null)}
+                          style={{ flex:1, padding:'8px', borderRadius:'8px', border:'1px solid #ddd', background:'transparent', fontSize:'13px', cursor:'pointer', color:'#666' }}>
+                          Cancelar
+                        </button>
+                        <button onClick={() => responderMensaje(m.id)}
+                          style={{ flex:1, padding:'8px', borderRadius:'8px', border:'none', background:'#1D9E75', color:'white', fontSize:'13px', cursor:'pointer', fontWeight:'500' }}>
+                          Enviar respuesta
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button onClick={() => setRespondiendo(m.id)}
+                      style={{ padding:'8px 16px', borderRadius:'8px', border:'none', background:'#1D9E75', color:'white', fontSize:'13px', cursor:'pointer', fontWeight:'500' }}>
+                      Responder
+                    </button>
+                  )
+                )}
               </div>
             ))}
           </div>
