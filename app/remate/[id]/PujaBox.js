@@ -115,14 +115,14 @@ export default function PujaBox({ remate }) {
       <div style={{ background:'#fff', border:'1px solid #eee', borderRadius:'12px', padding:'20px' }}>
 
         {/* BADGE */}
-        <div style={{ display:'inline-flex', alignItems:'center', gap:'6px', background: esPrecioFijo ? '#E1F5EE' : '#FCEBEB', color: esPrecioFijo ? '#085041' : '#A32D2D', padding:'4px 10px', borderRadius:'20px', fontSize:'12px', marginBottom:'12px' }}>
-          <div style={{ width:'7px', height:'7px', borderRadius:'50%', background: esPrecioFijo ? '#1D9E75' : '#E24B4A' }}></div>
-          {esPrecioFijo ? 'Precio fijo' : 'En vivo'}
+        <div style={{ display:'inline-flex', alignItems:'center', gap:'6px', background: esPrecioFijo ? '#E6F1FB' : '#FCEBEB', color: esPrecioFijo ? '#185FA5' : '#A32D2D', padding:'4px 10px', borderRadius:'20px', fontSize:'12px', marginBottom:'12px' }}>
+          <div style={{ width:'7px', height:'7px', borderRadius:'50%', background: esPrecioFijo ? '#378ADD' : '#E24B4A' }}></div>
+          {esPrecioFijo ? 'Venta directa' : 'En vivo'}
         </div>
 
         <h1 style={{ fontSize:'17px', fontWeight:'500', marginBottom:'16px', lineHeight:'1.4' }}>{remate.titulo}</h1>
 
-        {/* TEMPORIZADOR — solo para subasta */}
+        {/* TEMPORIZADOR — solo subasta */}
         {!esPrecioFijo && (
           <div style={{ background:'#f9f9f9', borderRadius:'8px', padding:'12px', textAlign:'center', marginBottom:'16px' }}>
             <p style={{ fontSize:'11px', color:'#999', marginBottom:'6px' }}>Tiempo restante</p>
