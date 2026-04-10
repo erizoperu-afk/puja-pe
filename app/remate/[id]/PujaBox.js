@@ -7,6 +7,7 @@ export default function PujaBox({ remate }) {
   const [precio, setPrecio] = useState(Number(remate.precio_actual))
   const [pujas, setPujas] = useState([])
   const [miPuja, setMiPuja] = useState('')
+  const [miAutobid, setMiAutobid] = useState('')
   const [miOferta, setMiOferta] = useState('')
   const [mensaje, setMensaje] = useState('')
   const [error, setError] = useState('')
@@ -14,6 +15,8 @@ export default function PujaBox({ remate }) {
   const [segundos, setSegundos] = useState(0)
   const [mostrarOferta, setMostrarOferta] = useState(false)
   const [esVendedor, setEsVendedor] = useState(false)
+  const [modoAutobid, setModoAutobid] = useState(false)
+  const [autobidActivo, setAutobidActivo] = useState(null)
 
   const esPrecioFijo = remate.tipo_publicacion === 'precio_fijo'
   const vencido = segundos === 0 && !esPrecioFijo
@@ -31,10 +34,20 @@ export default function PujaBox({ remate }) {
 
   useEffect(() => {
     async function init() {
-      // Verificar si el usuario actual es el vendedor
       const { data: { session } } = await supabase.auth.getSession()
       if (session && session.user.id === remate.vendedor_id) {
         setEsVendedor(true)
+      }
+      if (session && session.user.id !== remate.vendedor_id) {
+        // Verificar si ya tiene un autobid activo
+        const { data: bid } = await supabase
+          .from('autobids')
+          .select('*')
+          .eq('remate_id', remate.id)
+          .eq('usuario_id', session.user.id)
+          .eq('activo', true)
+          .single()
+        if (bid) setAutobidActivo(bid)
       }
       if (!esPrecioFijo) cargarPujas()
     }
@@ -95,10 +108,56 @@ export default function PujaBox({ remate }) {
       .insert({ remate_id: remate.id, usuario_id: session.user.id, monto })
     if (errPuja) { setError('Error al registrar puja: ' + errPuja.message); setCargando(false); return }
     await supabase.from('remates').update({ precio_actual: monto }).eq('id', remate.id)
+    // Procesar autobids de otros usuarios
+    await supabase.rpc('procesar_autobid', { p_remate_id: remate.id, p_precio_actual: monto, p_ultimo_postor: session.user.id })
     setMiPuja('')
     setMensaje('¡Puja registrada! Vas ganando.')
     cargarPujas()
     setCargando(false)
+  }
+
+  async function configurarAutobid() {
+    if (vencido) return
+    setCargando(true)
+    setError('')
+    setMensaje('')
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) { setError('Debes ingresar para configurar una puja automática.'); setCargando(false); return }
+    if (session.user.id === remate.vendedor_id) { setError('No puedes pujar en tu propio remate.'); setCargando(false); return }
+    const montoMax = Number(miAutobid)
+    const minimo = precio + Number(remate.incremento_minimo)
+    if (montoMax < minimo) { setError('Tu puja máxima debe ser mayor a S/ ' + minimo); setCargando(false); return }
+
+    // Guardar el autobid
+    const { error: errBid } = await supabase.from('autobids').upsert({
+      remate_id: remate.id,
+      usuario_id: session.user.id,
+      monto_maximo: montoMax,
+      activo: true
+    }, { onConflict: 'remate_id,usuario_id' })
+    if (errBid) { setError('Error al configurar puja automática.'); setCargando(false); return }
+
+    // Hacer la primera puja automática
+    const primeraP = Math.min(montoMax, precio + Number(remate.incremento_minimo))
+    await supabase.from('pujas').insert({ remate_id: remate.id, usuario_id: session.user.id, monto: primeraP })
+    await supabase.from('remates').update({ precio_actual: primeraP }).eq('id', remate.id)
+
+    setAutobidActivo({ monto_maximo: montoMax })
+    setModoAutobid(false)
+    setMiAutobid('')
+    setMensaje('¡Puja automática activada! Pujaremos por ti hasta S/ ' + montoMax.toLocaleString())
+    cargarPujas()
+    setCargando(false)
+  }
+
+  async function cancelarAutobid() {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) return
+    await supabase.from('autobids').update({ activo: false })
+      .eq('remate_id', remate.id)
+      .eq('usuario_id', session.user.id)
+    setAutobidActivo(null)
+    setMensaje('Puja automática cancelada.')
   }
 
   async function comprarDirecto() {
@@ -155,7 +214,7 @@ export default function PujaBox({ remate }) {
 
         <h1 style={{ fontSize:'17px', fontWeight:'500', marginBottom:'16px', lineHeight:'1.4' }}>{remate.titulo}</h1>
 
-        {/* TEMPORIZADOR — solo subasta */}
+        {/* TEMPORIZADOR */}
         {!esPrecioFijo && (
           <div style={{ background:'#f9f9f9', borderRadius:'8px', padding:'12px', textAlign:'center', marginBottom:'16px' }}>
             <p style={{ fontSize:'11px', color:'#999', marginBottom:'6px' }}>Tiempo restante</p>
@@ -189,7 +248,7 @@ export default function PujaBox({ remate }) {
           </p>
         )}
 
-        {/* HISTORIAL PUJAS — solo subasta */}
+        {/* HISTORIAL PUJAS */}
         {!esPrecioFijo && pujas.length > 0 && (
           <div style={{ background:'#f9f9f9', borderRadius:'8px', padding:'10px', marginBottom:'16px' }}>
             <p style={{ fontSize:'11px', color:'#999', marginBottom:'6px' }}>Ultimas pujas</p>
@@ -205,7 +264,7 @@ export default function PujaBox({ remate }) {
         {error && <div style={{ background:'#FCEBEB', color:'#A32D2D', padding:'8px 12px', borderRadius:'8px', fontSize:'13px', marginBottom:'12px' }}>{error}</div>}
         {mensaje && <div style={{ background:'#E1F5EE', color:'#085041', padding:'8px 12px', borderRadius:'8px', fontSize:'13px', marginBottom:'12px' }}>{mensaje}</div>}
 
-        {/* MENSAJE SI ES EL VENDEDOR */}
+        {/* VENDEDOR */}
         {esVendedor && (
           <div style={{ background:'#f9f9f9', color:'#999', padding:'12px', borderRadius:'8px', fontSize:'13px', textAlign:'center' }}>
             Esta es tu publicación. No puedes pujar ni comprar tu propio artículo.
@@ -221,18 +280,70 @@ export default function PujaBox({ remate }) {
               </div>
             ) : (
               <>
-                <p style={{ fontSize:'12px', color:'#666', marginBottom:'6px' }}>Tu puja — mínimo S/ {precio + Number(remate.incremento_minimo)}</p>
-                <input type='number' value={miPuja} onChange={e => setMiPuja(e.target.value)}
-                  placeholder={String(precio + Number(remate.incremento_minimo))}
-                  style={{ width:'100%', padding:'10px 12px', borderRadius:'8px', border:'1px solid #ddd', fontSize:'14px', marginBottom:'10px', boxSizing:'border-box' }} />
-                <button onClick={hacerPuja} disabled={cargando}
-                  style={{ width:'100%', padding:'11px', borderRadius:'8px', border:'none', background: cargando ? '#9FE1CB' : '#1D9E75', color:'white', fontSize:'15px', fontWeight:'500', cursor:'pointer', marginBottom:'8px' }}>
-                  {cargando ? 'Registrando...' : 'Pujar ahora'}
-                </button>
-                {remate.precio_directo && (
-                  <button style={{ width:'100%', padding:'10px', borderRadius:'8px', border:'1px solid #ddd', background:'transparent', fontSize:'14px', cursor:'pointer' }}>
-                    Comprar directo — S/ {Number(remate.precio_directo).toLocaleString()}
-                  </button>
+                {/* AUTOBID ACTIVO */}
+                {autobidActivo && (
+                  <div style={{ background:'#E1F5EE', border:'1px solid #9FE1CB', borderRadius:'8px', padding:'12px', marginBottom:'12px' }}>
+                    <p style={{ fontSize:'13px', color:'#085041', fontWeight:'500', marginBottom:'4px' }}>🤖 Puja automática activa</p>
+                    <p style={{ fontSize:'12px', color:'#0F6E56', marginBottom:'8px' }}>Pujaremos por ti hasta S/ {Number(autobidActivo.monto_maximo).toLocaleString()}</p>
+                    <button onClick={cancelarAutobid}
+                      style={{ fontSize:'12px', color:'#A32D2D', background:'none', border:'1px solid #E24B4A', borderRadius:'6px', padding:'4px 10px', cursor:'pointer' }}>
+                      Cancelar puja automática
+                    </button>
+                  </div>
+                )}
+
+                {/* TABS PUJA NORMAL / AUTOBID */}
+                {!autobidActivo && (
+                  <div style={{ display:'flex', gap:'6px', marginBottom:'12px' }}>
+                    <button onClick={() => setModoAutobid(false)}
+                      style={{ flex:1, padding:'8px', borderRadius:'8px', border:'none', background: !modoAutobid ? '#1D9E75' : '#f5f5f5', color: !modoAutobid ? 'white' : '#666', fontSize:'13px', cursor:'pointer', fontWeight:'500' }}>
+                      Puja normal
+                    </button>
+                    <button onClick={() => setModoAutobid(true)}
+                      style={{ flex:1, padding:'8px', borderRadius:'8px', border:'none', background: modoAutobid ? '#1D9E75' : '#f5f5f5', color: modoAutobid ? 'white' : '#666', fontSize:'13px', cursor:'pointer', fontWeight:'500' }}>
+                      🤖 Puja automática
+                    </button>
+                  </div>
+                )}
+
+                {/* PUJA NORMAL */}
+                {!modoAutobid && !autobidActivo && (
+                  <>
+                    <p style={{ fontSize:'12px', color:'#666', marginBottom:'6px' }}>Tu puja — mínimo S/ {precio + Number(remate.incremento_minimo)}</p>
+                    <input type='number' value={miPuja} onChange={e => setMiPuja(e.target.value)}
+                      placeholder={String(precio + Number(remate.incremento_minimo))}
+                      style={{ width:'100%', padding:'10px 12px', borderRadius:'8px', border:'1px solid #ddd', fontSize:'14px', marginBottom:'10px', boxSizing:'border-box' }} />
+                    <button onClick={hacerPuja} disabled={cargando}
+                      style={{ width:'100%', padding:'11px', borderRadius:'8px', border:'none', background: cargando ? '#9FE1CB' : '#1D9E75', color:'white', fontSize:'15px', fontWeight:'500', cursor:'pointer', marginBottom:'8px' }}>
+                      {cargando ? 'Registrando...' : 'Pujar ahora'}
+                    </button>
+                    {remate.precio_directo && (
+                      <button style={{ width:'100%', padding:'10px', borderRadius:'8px', border:'1px solid #ddd', background:'transparent', fontSize:'14px', cursor:'pointer' }}>
+                        Comprar directo — S/ {Number(remate.precio_directo).toLocaleString()}
+                      </button>
+                    )}
+                  </>
+                )}
+
+                {/* PUJA AUTOMÁTICA */}
+                {modoAutobid && !autobidActivo && (
+                  <>
+                    <div style={{ background:'#f9f9f9', borderRadius:'8px', padding:'12px', marginBottom:'12px', fontSize:'12px', color:'#666', lineHeight:'1.6' }}>
+                      💡 Ingresa el máximo que estás dispuesto a pagar. El sistema pujará automáticamente por ti con el incremento mínimo hasta alcanzar tu límite.
+                    </div>
+                    <p style={{ fontSize:'12px', color:'#666', marginBottom:'6px' }}>Tu puja máxima — mínimo S/ {precio + Number(remate.incremento_minimo)}</p>
+                    <input type='number' value={miAutobid} onChange={e => setMiAutobid(e.target.value)}
+                      placeholder={'Ej: ' + (precio + Number(remate.incremento_minimo) * 5)}
+                      style={{ width:'100%', padding:'10px 12px', borderRadius:'8px', border:'1px solid #1D9E75', fontSize:'14px', marginBottom:'10px', boxSizing:'border-box' }} />
+                    <button onClick={configurarAutobid} disabled={cargando}
+                      style={{ width:'100%', padding:'11px', borderRadius:'8px', border:'none', background: cargando ? '#9FE1CB' : '#1D9E75', color:'white', fontSize:'15px', fontWeight:'500', cursor:'pointer', marginBottom:'8px' }}>
+                      {cargando ? 'Activando...' : '🤖 Activar puja automática'}
+                    </button>
+                    <button onClick={() => setModoAutobid(false)}
+                      style={{ width:'100%', padding:'8px', borderRadius:'8px', border:'1px solid #ddd', background:'transparent', fontSize:'13px', cursor:'pointer', color:'#666' }}>
+                      Cancelar
+                    </button>
+                  </>
                 )}
               </>
             )}
