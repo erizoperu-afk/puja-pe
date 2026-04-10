@@ -3,6 +3,7 @@ import Navbar from '../../Navbar'
 import PujaBox from './PujaBox'
 import GaleriaFotos from './galeriaFotos'
 import BotonFavorito from './BotonFavorito'
+import BotonCompartir from './BotonCompartir'
 
 export default async function PaginaRemate({ params }) {
   const { id } = await params
@@ -16,25 +17,24 @@ export default async function PaginaRemate({ params }) {
     <div style={{ padding:'40px', fontFamily:'sans-serif' }}>Remate no encontrado.</div>
   )
 
+  const url = 'https://puja-polo-pe.vercel.app/remate/' + remate.id
+  const texto = '¡Mira este artículo en Puja.pe! ' + remate.titulo + ' — S/ ' + Number(remate.precio_actual).toLocaleString()
+
   return (
     <main style={{ fontFamily:'sans-serif', overflowX:'hidden' }}>
       <Navbar />
       <div style={{ maxWidth:'1100px', margin:'0 auto', padding:'16px' }}>
-        {/* BREADCRUMB */}
         <p style={{ fontSize:'12px', color:'#999', marginBottom:'12px' }}>
           <a href='/' style={{ color:'#1D9E75', textDecoration:'none' }}>Inicio</a> › {remate.categoria} › {remate.titulo}
         </p>
 
-        {/* LAYOUT RESPONSIVE */}
         <div style={{ display:'grid', gridTemplateColumns:'1fr', gap:'16px' }} className='remate-grid'>
-
-          {/* PUJABOX PRIMERO EN MÓVIL */}
           <div className='pujabox-col'>
             <PujaBox remate={remate} />
             <BotonFavorito remateId={remate.id} />
+            <BotonCompartir url={url} texto={texto} titulo={remate.titulo} />
           </div>
 
-          {/* CONTENIDO */}
           <div className='contenido-col'>
             <GaleriaFotos imagenes={remate.imagenes_url || (remate.imagen_url ? [remate.imagen_url] : [])} titulo={remate.titulo} />
             <div style={{ background:'#fff', border:'1px solid #eee', borderRadius:'12px', padding:'20px', marginBottom:'16px' }}>
@@ -61,23 +61,13 @@ export default async function PaginaRemate({ params }) {
 
       <style>{`
         @media (min-width: 768px) {
-          .remate-grid {
-            grid-template-columns: 1fr 340px !important;
-          }
-          .pujabox-col {
-            order: 2;
-          }
-          .contenido-col {
-            order: 1;
-          }
+          .remate-grid { grid-template-columns: 1fr 340px !important; }
+          .pujabox-col { order: 2; }
+          .contenido-col { order: 1; }
         }
         @media (max-width: 767px) {
-          .pujabox-col {
-            order: 1;
-          }
-          .contenido-col {
-            order: 2;
-          }
+          .pujabox-col { order: 1; }
+          .contenido-col { order: 2; }
         }
       `}</style>
     </main>
