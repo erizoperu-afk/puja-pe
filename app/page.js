@@ -5,18 +5,17 @@ import { supabase } from './supabase'
 import Navbar from './Navbar'
 
 const CATEGORIAS = [
-  { nombre: 'Antiguedades', icono: '🏺' },
-  { nombre: 'Coleccionables', icono: '⭐' },
-  { nombre: 'Electronica', icono: '💻' },
-  { nombre: 'Filatelia', icono: '✉️' },
-  { nombre: 'Juguetes', icono: '🧸' },
-  { nombre: 'Numismatica', icono: '🪙' },
-  { nombre: 'Relojes', icono: '⌚' },
-  { nombre: 'Ropa y accesorios', icono: '👗' },
-  { nombre: 'Otros', icono: '📦' },
+  'ANTIGUEDADES', 'COLECCIONABLES', 'ELECTRONICA', 'FILATELIA',
+  'JUGUETES', 'NUMISMATICA', 'RELOJES', 'ROPA Y ACCESORIOS', 'OTROS'
+]
+
+const CATEGORIAS_URL = [
+  'Antiguedades', 'Coleccionables', 'Electronica', 'Filatelia',
+  'Juguetes', 'Numismatica', 'Relojes', 'Ropa y accesorios', 'Otros'
 ]
 
 const POR_PAGINA = 12
+const BASE_URL = 'https://puja-polo-pe.vercel.app'
 
 function TiempoRestante({ fechaFin, tipoPub }) {
   const [texto, setTexto] = useState('')
@@ -27,14 +26,14 @@ function TiempoRestante({ fechaFin, tipoPub }) {
       if (diff === 0) { setTexto('Finalizado'); return }
       if (tipoPub === 'precio_fijo') {
         const dias = Math.ceil(diff / (1000 * 60 * 60 * 24))
-        setTexto(dias === 1 ? '1 día restante' : `${dias} días restantes`)
+        setTexto(dias === 1 ? '1 dia restante' : `${dias} dias restantes`)
       } else {
         const h = Math.floor(diff / 3600000)
         const m = Math.floor((diff % 3600000) / 60000)
         const s = Math.floor((diff % 60000) / 1000)
         if (h > 24) {
           const dias = Math.floor(h / 24)
-          setTexto(dias === 1 ? '1 día restante' : `${dias} días restantes`)
+          setTexto(dias === 1 ? '1 dia restante' : `${dias} dias restantes`)
         } else {
           setTexto(`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`)
         }
@@ -47,26 +46,80 @@ function TiempoRestante({ fechaFin, tipoPub }) {
   return <span style={{ fontSize:'11px', color: texto === 'Finalizado' ? '#999' : '#A32D2D', fontWeight:'500' }}>{texto}</span>
 }
 
+function BotonCompartirTarjeta({ remate }) {
+  const [abierto, setAbierto] = useState(false)
+  const [copiado, setCopiado] = useState(false)
+  const url = BASE_URL + '/remate/' + remate.id
+  const texto = 'Mira este articulo en Puja.pe! ' + remate.titulo + ' — S/ ' + Number(remate.precio_actual).toLocaleString()
+
+  async function copiar(e) {
+    e.preventDefault(); e.stopPropagation()
+    await navigator.clipboard.writeText(url)
+    setCopiado(true)
+    setTimeout(() => { setCopiado(false); setAbierto(false) }, 1500)
+  }
+
+  function compartir(e, href) {
+    e.preventDefault(); e.stopPropagation()
+    window.open(href, '_blank')
+    setAbierto(false)
+  }
+
+  return (
+    <div style={{ position:'relative' }} onClick={e => e.preventDefault()}>
+      <button onClick={e => { e.preventDefault(); e.stopPropagation(); setAbierto(!abierto) }}
+        style={{ background:'white', border:'1px solid #eee', borderRadius:'20px', padding:'4px 10px', fontSize:'11px', cursor:'pointer', color:'#666', display:'flex', alignItems:'center', gap:'4px' }}>
+        🔗 Compartir
+      </button>
+      {abierto && (
+        <div style={{ position:'absolute', bottom:'32px', right:0, background:'white', border:'1px solid #eee', borderRadius:'10px', padding:'8px', zIndex:10, width:'180px', boxShadow:'0 4px 12px rgba(0,0,0,0.1)' }}>
+          <button onClick={e => compartir(e, 'https://wa.me/?text=' + encodeURIComponent(texto + '\n' + url))}
+            style={{ width:'100%', padding:'7px 10px', border:'none', background:'none', cursor:'pointer', fontSize:'12px', textAlign:'left', borderRadius:'6px', display:'flex', alignItems:'center', gap:'8px' }}>
+            💬 WhatsApp
+          </button>
+          <button onClick={e => compartir(e, 'https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(url))}
+            style={{ width:'100%', padding:'7px 10px', border:'none', background:'none', cursor:'pointer', fontSize:'12px', textAlign:'left', borderRadius:'6px', display:'flex', alignItems:'center', gap:'8px' }}>
+            📘 Facebook
+          </button>
+          <button onClick={e => compartir(e, 'https://twitter.com/intent/tweet?text=' + encodeURIComponent(texto) + '&url=' + encodeURIComponent(url))}
+            style={{ width:'100%', padding:'7px 10px', border:'none', background:'none', cursor:'pointer', fontSize:'12px', textAlign:'left', borderRadius:'6px', display:'flex', alignItems:'center', gap:'8px' }}>
+            🐦 Twitter/X
+          </button>
+          <button onClick={copiar}
+            style={{ width:'100%', padding:'7px 10px', border:'none', background: copiado ? '#E1F5EE' : 'none', cursor:'pointer', fontSize:'12px', textAlign:'left', borderRadius:'6px', display:'flex', alignItems:'center', gap:'8px', color: copiado ? '#085041' : '#444' }}>
+            {copiado ? '✅ Copiado!' : '🔗 Copiar enlace'}
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function TarjetaRemate({ remate }) {
   return (
-    <a href={'/remate/' + remate.id} style={{ background:'#fff', border:'1px solid #eee', borderRadius:'12px', overflow:'hidden', textDecoration:'none', color:'black', display:'block' }}>
-      <div style={{ height:'140px', background:'#f5f5f5', overflow:'hidden' }}>
-        {remate.imagen_url
-          ? <img src={remate.imagen_url} alt={remate.titulo} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
-          : <div style={{ width:'100%', height:'100%', background:'#e0e0e0' }}></div>}
-      </div>
-      <div style={{ padding:'12px' }}>
-        <p style={{ fontWeight:'500', fontSize:'14px', marginBottom:'4px' }}>{remate.titulo}</p>
-        <p style={{ fontSize:'11px', color:'#999', marginBottom:'6px' }}>{remate.categoria}</p>
-        <p style={{ fontSize:'18px', fontWeight:'500', marginBottom:'6px' }}>S/ {Number(remate.precio_actual).toLocaleString()}</p>
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:'4px', flexWrap:'wrap', gap:'4px' }}>
-          <TiempoRestante fechaFin={remate.fecha_fin} tipoPub={remate.tipo_publicacion} />
-          <span style={{ fontSize:'11px', background: remate.tipo_publicacion === 'precio_fijo' ? '#E6F1FB' : '#FCEBEB', color: remate.tipo_publicacion === 'precio_fijo' ? '#185FA5' : '#A32D2D', padding:'2px 8px', borderRadius:'20px' }}>
-            {remate.tipo_publicacion === 'precio_fijo' ? 'Venta directa' : 'En vivo'}
-          </span>
+    <div style={{ background:'#fff', border:'1px solid #eee', borderRadius:'12px', overflow:'hidden', display:'block', position:'relative' }}>
+      <a href={'/remate/' + remate.id} style={{ textDecoration:'none', color:'black', display:'block' }}>
+        <div style={{ height:'140px', background:'#f5f5f5', overflow:'hidden' }}>
+          {remate.imagen_url
+            ? <img src={remate.imagen_url} alt={remate.titulo} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+            : <div style={{ width:'100%', height:'100%', background:'#e0e0e0' }}></div>}
         </div>
+        <div style={{ padding:'12px 12px 8px' }}>
+          <p style={{ fontWeight:'500', fontSize:'14px', marginBottom:'4px' }}>{remate.titulo}</p>
+          <p style={{ fontSize:'11px', color:'#999', marginBottom:'6px' }}>{remate.categoria}</p>
+          <p style={{ fontSize:'18px', fontWeight:'500', marginBottom:'6px' }}>S/ {Number(remate.precio_actual).toLocaleString()}</p>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:'4px' }}>
+            <TiempoRestante fechaFin={remate.fecha_fin} tipoPub={remate.tipo_publicacion} />
+            <span style={{ fontSize:'11px', background: remate.tipo_publicacion === 'precio_fijo' ? '#E6F1FB' : '#FCEBEB', color: remate.tipo_publicacion === 'precio_fijo' ? '#185FA5' : '#A32D2D', padding:'2px 8px', borderRadius:'20px' }}>
+              {remate.tipo_publicacion === 'precio_fijo' ? 'Venta directa' : 'En vivo'}
+            </span>
+          </div>
+        </div>
+      </a>
+      <div style={{ padding:'0 12px 10px', display:'flex', justifyContent:'flex-end' }}>
+        <BotonCompartirTarjeta remate={remate} />
       </div>
-    </a>
+    </div>
   )
 }
 
@@ -117,22 +170,22 @@ export default function Home() {
       <Navbar />
 
       {/* CATEGORIAS */}
-      <div style={{ background:'#fff', borderBottom:'1px solid #eee', padding:'0 12px', overflowX:'auto' }}>
-        <div style={{ display:'flex', justifyContent:'center', flexWrap:'wrap', maxWidth:'1200px', margin:'0 auto', gap:'2px', padding:'8px 0' }}>
-          {CATEGORIAS.map(cat => (
-            <a key={cat.nombre} href={'/categoria/' + cat.nombre}
-              onMouseEnter={() => setCatHover(cat.nombre)}
+      <div style={{ background:'#fff', borderBottom:'1px solid #eee', padding:'12px 16px' }}>
+        <div style={{ display:'flex', justifyContent:'center', flexWrap:'wrap', maxWidth:'1200px', margin:'0 auto', gap:'6px' }}>
+          {CATEGORIAS.map((cat, i) => (
+            <a key={cat} href={'/categoria/' + CATEGORIAS_URL[i]}
+              onMouseEnter={() => setCatHover(cat)}
               onMouseLeave={() => setCatHover(null)}
               style={{
-                display:'flex', flexDirection:'column', alignItems:'center', gap:'4px',
-                padding:'8px 10px', borderRadius:'10px', textDecoration:'none',
-                minWidth:'70px', maxWidth:'90px',
-                background: catHover === cat.nombre ? '#E1F5EE' : 'transparent',
-                color: catHover === cat.nombre ? '#085041' : '#555',
-                transition:'background 0.15s',
+                padding:'8px 16px', borderRadius:'20px',
+                border: catHover === cat ? '1px solid #1D9E75' : '1px solid #ddd',
+                textDecoration:'none', fontSize:'13px', fontWeight:'700',
+                color: catHover === cat ? '#085041' : '#444',
+                background: catHover === cat ? '#E1F5EE' : '#f9f9f9',
+                whiteSpace:'nowrap', letterSpacing:'0.5px',
+                transition:'all 0.15s'
               }}>
-              <span style={{ fontSize:'22px', lineHeight:1 }}>{cat.icono}</span>
-              <span style={{ fontSize:'11px', fontWeight:'700', textAlign:'center', lineHeight:'1.2' }}>{cat.nombre}</span>
+              {cat}
             </a>
           ))}
         </div>
@@ -149,13 +202,13 @@ export default function Home() {
         </div>
       </section>
 
-      {/* LOS REMATES MÁS HOT */}
+      {/* LOS REMATES MAS HOT */}
       {!cargando && hot.length > 0 && (
         <section style={{ padding:'24px 16px', maxWidth:'1200px', margin:'0 auto' }}>
           <div style={{ display:'flex', alignItems:'center', gap:'8px', marginBottom:'16px', flexWrap:'wrap' }}>
-            <span style={{ fontSize:'22px' }}>🔥</span>
-            <h2 style={{ fontSize:'18px', fontWeight:'700' }}>Los Remates Más Hot</h2>
-            <span style={{ fontSize:'12px', color:'#999' }}>— Los que más pujas tienen</span>
+            <h2 style={{ fontSize:'18px', fontWeight:'700', letterSpacing:'0.5px' }}>LOS REMATES MAS HOT</h2>
+            <span style={{ fontSize:'18px' }}>🔥🔥🔥🔥</span>
+            <span style={{ fontSize:'12px', color:'#999' }}>— Los que mas pujas tienen</span>
           </div>
           <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(160px, 1fr))', gap:'12px' }}>
             {hot.map(remate => (
@@ -174,9 +227,9 @@ export default function Home() {
       {!cargando && nuevos.length > 0 && (
         <section style={{ padding:'24px 16px', maxWidth:'1200px', margin:'0 auto', borderTop:'1px solid #eee' }}>
           <div style={{ display:'flex', alignItems:'center', gap:'8px', marginBottom:'16px', flexWrap:'wrap' }}>
-            <span style={{ fontSize:'22px' }}>✨</span>
-            <h2 style={{ fontSize:'18px', fontWeight:'700' }}>Lo Nuevo</h2>
-            <span style={{ fontSize:'12px', color:'#999' }}>— Las últimas 20 publicaciones</span>
+            <span style={{ fontSize:'18px' }}>✨</span>
+            <h2 style={{ fontSize:'18px', fontWeight:'700', letterSpacing:'0.5px' }}>LO NUEVO</h2>
+            <span style={{ fontSize:'12px', color:'#999' }}>— Las ultimas 20 publicaciones</span>
           </div>
           <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(160px, 1fr))', gap:'12px' }}>
             {nuevos.map(remate => (
@@ -197,7 +250,7 @@ export default function Home() {
           <h2 style={{ fontSize:'18px', fontWeight:'700' }}>
             Todos los remates ({cargando ? '...' : rematesFiltrados.length})
           </h2>
-          {totalPaginas > 1 && <span style={{ fontSize:'13px', color:'#999' }}>Página {pagina} de {totalPaginas}</span>}
+          {totalPaginas > 1 && <span style={{ fontSize:'13px', color:'#999' }}>Pagina {pagina} de {totalPaginas}</span>}
         </div>
         {cargando && <div style={{ textAlign:'center', padding:'40px', color:'#999' }}>Cargando remates...</div>}
         <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(160px, 1fr))', gap:'12px' }}>
