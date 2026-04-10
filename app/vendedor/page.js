@@ -37,14 +37,11 @@ export default function PanelVendedor() {
       setPujasXRemate(conteo)
       setTotalPujas(pujas?.length || 0)
 
-      // Obtener datos de compradores para remates vendidos
       const rematesVendidos = data.filter(r => r.comprador_id)
       const contactosData = {}
       for (const r of rematesVendidos) {
         const { data: contacto } = await supabase.rpc('get_datos_contacto', { p_usuario_id: r.comprador_id })
         if (contacto) contactosData[r.id] = contacto
-
-        // Si no tiene comprador_id, buscar la puja ganadora
         if (!r.comprador_id && r.precio_actual > r.precio_inicial) {
           const { data: pujaMayor } = await supabase
             .from('pujas').select('usuario_id')
@@ -66,10 +63,18 @@ export default function PanelVendedor() {
   }
 
   function estadoRemate(remate) {
+    // Programado — tiene fecha_inicio en el futuro y no está activo
+    if (!remate.activo && remate.fecha_inicio && new Date(remate.fecha_inicio) > new Date()) return 'programado'
     if (remate.activo) return 'activo'
     if (remate.comprador_id) return 'vendido'
     if (remate.precio_actual > remate.precio_inicial) return 'vendido'
     return 'sin_oferta'
+  }
+
+  async function cancelarProgramacion(remateId) {
+    if (!confirm('¿Cancelar esta publicación programada?')) return
+    await supabase.from('remates').update({ activo: false, fecha_inicio: null }).eq('id', remateId)
+    cargarDatos()
   }
 
   async function republicar(remate) {
@@ -103,8 +108,9 @@ export default function PanelVendedor() {
     cargarDatos()
   }
 
+  const rematesProgramados = remates.filter(r => estadoRemate(r) === 'programado')
   const rematesActivos = remates.filter(r => estadoRemate(r) === 'activo')
-  const rematesConcluidos = remates.filter(r => estadoRemate(r) !== 'activo')
+  const rematesConcluidos = remates.filter(r => !['activo', 'programado'].includes(estadoRemate(r)))
   const campo = { width:'100%', padding:'8px 10px', borderRadius:'8px', border:'1px solid #ddd', fontSize:'13px', boxSizing:'border-box', marginBottom:'8px' }
 
   function TarjetaRemate({ remate, concluido }) {
@@ -113,16 +119,19 @@ export default function PanelVendedor() {
     const esEditando = editando === remate.id
     const esSinOferta = estado === 'sin_oferta'
     const esVendido = estado === 'vendido'
+    const esProgramado = estado === 'programado'
     const contacto = contactos[remate.id]
 
     const badge = estado === 'activo'
       ? { texto:'Activo', bg:'#E1F5EE', color:'#085041' }
+      : estado === 'programado'
+      ? { texto:'Programado', bg:'#FFF8E1', color:'#B8860B' }
       : estado === 'vendido'
       ? { texto:'Vendido', bg:'#E6F1FB', color:'#185FA5' }
       : { texto:'Sin oferta', bg:'#FCEBEB', color:'#A32D2D' }
 
     return (
-      <div style={{ background: concluido ? '#fafafa' : '#fff', border:'1px solid #eee', borderRadius:'12px', padding:'12px', marginBottom:'10px' }}>
+      <div style={{ background: concluido ? '#fafafa' : '#fff', border: esProgramado ? '1px solid #FFD700' : '1px solid #eee', borderRadius:'12px', padding:'12px', marginBottom:'10px' }}>
         <div style={{ display:'flex', alignItems:'center', gap:'10px', flexWrap:'wrap' }}>
           <div style={{ width:'48px', height:'48px', background:'#f5f5f5', borderRadius:'8px', border:'1px solid #eee', flexShrink:0, overflow:'hidden' }}>
             {remate.imagen_url && <img src={remate.imagen_url} alt='' style={{ width:'100%', height:'100%', objectFit:'cover' }} />}
@@ -136,14 +145,28 @@ export default function PanelVendedor() {
             <p style={{ fontSize:'20px', fontWeight:'500', color: numPujas > 0 ? '#1D9E75' : '#ccc' }}>{numPujas}</p>
           </div>
           <div style={{ textAlign:'right', minWidth:'90px' }}>
-            <p style={{ fontSize:'10px', color:'#999', marginBottom:'2px' }}>{estado === 'activo' ? 'Precio actual' : 'Precio final'}</p>
+            <p style={{ fontSize:'10px', color:'#999', marginBottom:'2px' }}>{estado === 'activo' ? 'Precio actual' : 'Precio'}</p>
             <p style={{ fontSize:'14px', fontWeight:'500', marginBottom:'3px' }}>S/ {Number(remate.precio_actual).toLocaleString()}</p>
             <span style={{ fontSize:'10px', background: badge.bg, color: badge.color, padding:'2px 7px', borderRadius:'20px' }}>{badge.texto}</span>
           </div>
           <a href={'/remate/' + remate.id} style={{ fontSize:'12px', color:'#1D9E75', textDecoration:'none', padding:'6px 10px', border:'1px solid #1D9E75', borderRadius:'8px', flexShrink:0 }}>Ver</a>
         </div>
 
-        {/* DATOS DE CONTACTO DEL COMPRADOR */}
+        {/* INFO PROGRAMADO */}
+        {esProgramado && (
+          <div style={{ marginTop:'10px', paddingTop:'10px', borderTop:'1px solid #f0f0f0', background:'#FFF8E1', borderRadius:'8px', padding:'12px' }}>
+            <p style={{ fontSize:'12px', fontWeight:'500', color:'#B8860B', marginBottom:'6px' }}>📅 Publicación programada</p>
+            <p style={{ fontSize:'12px', color:'#8B6914', marginBottom:'10px' }}>
+              Se activará el {new Date(remate.fecha_inicio).toLocaleDateString('es-PE', { weekday:'long', day:'numeric', month:'long', year:'numeric', hour:'2-digit', minute:'2-digit' })}
+            </p>
+            <button onClick={() => cancelarProgramacion(remate.id)}
+              style={{ fontSize:'12px', color:'#A32D2D', background:'none', border:'1px solid #E24B4A', borderRadius:'6px', padding:'4px 10px', cursor:'pointer' }}>
+              Cancelar programación
+            </button>
+          </div>
+        )}
+
+        {/* DATOS COMPRADOR */}
         {esVendido && contacto && (
           <div style={{ marginTop:'10px', paddingTop:'10px', borderTop:'1px solid #f0f0f0', background:'#E6F1FB', borderRadius:'8px', padding:'12px' }}>
             <p style={{ fontSize:'12px', fontWeight:'500', color:'#185FA5', marginBottom:'8px' }}>📞 Datos del comprador</p>
@@ -234,13 +257,23 @@ export default function PanelVendedor() {
           ))}
         </div>
 
+        {/* PROGRAMADOS */}
+        {rematesProgramados.length > 0 && (
+          <>
+            <h2 style={{ fontSize:'16px', fontWeight:'700', marginBottom:'12px', color:'#B8860B' }}>📅 Publicaciones programadas</h2>
+            {rematesProgramados.map(r => <TarjetaRemate key={r.id} remate={r} concluido={false} />)}
+          </>
+        )}
+
+        {/* ACTIVOS */}
         {rematesActivos.length > 0 && (
           <>
-            <h2 style={{ fontSize:'16px', fontWeight:'700', marginBottom:'12px' }}>Publicaciones activas</h2>
+            <h2 style={{ fontSize:'16px', fontWeight:'700', marginBottom:'12px', marginTop: rematesProgramados.length > 0 ? '24px' : '0' }}>Publicaciones activas</h2>
             {rematesActivos.map(r => <TarjetaRemate key={r.id} remate={r} concluido={false} />)}
           </>
         )}
 
+        {/* CONCLUIDOS */}
         {rematesConcluidos.length > 0 && (
           <>
             <h2 style={{ fontSize:'16px', fontWeight:'700', marginBottom:'12px', marginTop:'24px', color:'#999' }}>Publicaciones concluidas</h2>
