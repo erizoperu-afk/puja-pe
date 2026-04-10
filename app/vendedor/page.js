@@ -14,6 +14,7 @@ export default function PanelVendedor() {
   const [formEditar, setFormEditar] = useState({})
   const [guardando, setGuardando] = useState(false)
   const [session, setSession] = useState(null)
+  const [contactos, setContactos] = useState({})
 
   useEffect(() => { cargarDatos() }, [])
 
@@ -35,6 +36,28 @@ export default function PanelVendedor() {
       pujas?.forEach(p => { conteo[p.remate_id] = (conteo[p.remate_id] || 0) + 1 })
       setPujasXRemate(conteo)
       setTotalPujas(pujas?.length || 0)
+
+      // Obtener datos de compradores para remates vendidos
+      const rematesVendidos = data.filter(r => r.comprador_id)
+      const contactosData = {}
+      for (const r of rematesVendidos) {
+        const { data: contacto } = await supabase.rpc('get_datos_contacto', { p_usuario_id: r.comprador_id })
+        if (contacto) contactosData[r.id] = contacto
+
+        // Si no tiene comprador_id, buscar la puja ganadora
+        if (!r.comprador_id && r.precio_actual > r.precio_inicial) {
+          const { data: pujaMayor } = await supabase
+            .from('pujas').select('usuario_id')
+            .eq('remate_id', r.id)
+            .order('monto', { ascending: false })
+            .limit(1).single()
+          if (pujaMayor) {
+            const { data: contactoPuja } = await supabase.rpc('get_datos_contacto', { p_usuario_id: pujaMayor.usuario_id })
+            if (contactoPuja) contactosData[r.id] = contactoPuja
+          }
+        }
+      }
+      setContactos(contactosData)
     }
 
     const { data: cred } = await supabase.from('creditos').select('saldo').eq('usuario_id', session.user.id).single()
@@ -89,6 +112,9 @@ export default function PanelVendedor() {
     const numPujas = pujasXRemate[remate.id] || 0
     const esEditando = editando === remate.id
     const esSinOferta = estado === 'sin_oferta'
+    const esVendido = estado === 'vendido'
+    const contacto = contactos[remate.id]
+
     const badge = estado === 'activo'
       ? { texto:'Activo', bg:'#E1F5EE', color:'#085041' }
       : estado === 'vendido'
@@ -116,6 +142,27 @@ export default function PanelVendedor() {
           </div>
           <a href={'/remate/' + remate.id} style={{ fontSize:'12px', color:'#1D9E75', textDecoration:'none', padding:'6px 10px', border:'1px solid #1D9E75', borderRadius:'8px', flexShrink:0 }}>Ver</a>
         </div>
+
+        {/* DATOS DE CONTACTO DEL COMPRADOR */}
+        {esVendido && contacto && (
+          <div style={{ marginTop:'10px', paddingTop:'10px', borderTop:'1px solid #f0f0f0', background:'#E6F1FB', borderRadius:'8px', padding:'12px' }}>
+            <p style={{ fontSize:'12px', fontWeight:'500', color:'#185FA5', marginBottom:'8px' }}>📞 Datos del comprador</p>
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(160px, 1fr))', gap:'8px' }}>
+              <div>
+                <p style={{ fontSize:'11px', color:'#666', marginBottom:'2px' }}>Nombre completo</p>
+                <p style={{ fontSize:'13px', fontWeight:'500', color:'#333' }}>{contacto.nombre} {contacto.apellido}</p>
+              </div>
+              <div>
+                <p style={{ fontSize:'11px', color:'#666', marginBottom:'2px' }}>Celular</p>
+                <p style={{ fontSize:'13px', fontWeight:'500', color:'#333' }}>+51 {contacto.celular}</p>
+              </div>
+              <div>
+                <p style={{ fontSize:'11px', color:'#666', marginBottom:'2px' }}>Nickname</p>
+                <p style={{ fontSize:'13px', fontWeight:'500', color:'#333' }}>{contacto.nickname}</p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {esSinOferta && (
           <div style={{ marginTop:'10px', paddingTop:'10px', borderTop:'1px solid #f0f0f0' }}>
@@ -167,7 +214,6 @@ export default function PanelVendedor() {
           <a href='/vendedor/nuevo' style={{ padding:'8px 14px', background:'#1D9E75', color:'white', borderRadius:'8px', textDecoration:'none', fontSize:'13px', fontWeight:'500' }}>+ Publicar</a>
         </div>
 
-        {/* CRÉDITOS */}
         <div style={{ background:'#E1F5EE', border:'1px solid #9FE1CB', borderRadius:'12px', padding:'14px', marginBottom:'16px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
           <div>
             <p style={{ fontSize:'13px', color:'#085041', marginBottom:'2px', fontWeight:'500' }}>Publicaciones disponibles</p>
@@ -179,13 +225,8 @@ export default function PanelVendedor() {
           </div>
         </div>
 
-        {/* MÉTRICAS */}
         <div style={{ display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:'10px', marginBottom:'20px' }}>
-          {[
-            ['Activos', rematesActivos.length],
-            ['Total', remates.length],
-            ['Pujas', totalPujas],
-          ].map(([lbl, val]) => (
+          {[['Activos', rematesActivos.length], ['Total', remates.length], ['Pujas', totalPujas]].map(([lbl, val]) => (
             <div key={lbl} style={{ background:'#fff', border:'1px solid #eee', borderRadius:'10px', padding:'12px' }}>
               <div style={{ fontSize:'11px', color:'#999', marginBottom:'4px' }}>{lbl}</div>
               <div style={{ fontSize:'22px', fontWeight:'500' }}>{val}</div>
