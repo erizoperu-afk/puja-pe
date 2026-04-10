@@ -171,7 +171,14 @@ export default function Login() {
                 <CampoPassword value={password} onChange={e => setPassword(e.target.value)} placeholder='Tu contraseña' ver={verPass} setVer={setVerPass} />
               </div>
               {error && <div style={{ background:'#FCEBEB', color:'#A32D2D', padding:'10px 14px', borderRadius:'8px', fontSize:'13px', marginBottom:'14px' }}>{error}</div>}
-              <button onClick={handleLogin} disabled={cargando}
+              <button onClick={async () => {
+  setCargando(true)
+  setError('')
+  const { error } = await supabase.auth.signInWithPassword({ email, password })
+  if (error) { setError('Correo o contraseña incorrectos.'); setCargando(false); return }
+  window.location.href = '/'
+  setCargando(false)
+}} disabled={cargando}
                 style={{ width:'100%', padding:'11px', borderRadius:'8px', border:'none', background: cargando ? '#9FE1CB' : '#1D9E75', color:'white', fontSize:'15px', fontWeight:'500', cursor:'pointer' }}>
                 {cargando ? 'Ingresando...' : 'Ingresar ahora'}
               </button>
