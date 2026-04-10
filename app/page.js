@@ -15,7 +15,7 @@ const CATEGORIAS_URL = [
 ]
 
 const POR_PAGINA = 12
-const BASE_URL = 'https://puja-polo-pe.vercel.app'
+const BASE_URL = 'https://puja.pe'
 
 function TiempoRestante({ fechaFin, tipoPub }) {
   const [texto, setTexto] = useState('')

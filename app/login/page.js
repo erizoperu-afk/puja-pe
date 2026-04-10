@@ -106,7 +106,7 @@ export default function Login() {
     setError('')
     if (!emailRecuperacion.trim()) { setError('Ingresa tu correo electrónico.'); setCargando(false); return }
     const { error } = await supabase.auth.resetPasswordForEmail(emailRecuperacion, {
-      redirectTo: 'https://puja-polo-pe.vercel.app/reset-password'
+    redirectTo: 'https://puja.pe/reset-password'
     })
     if (error) {
       setError('Error al enviar el correo. Verifica que el email sea correcto.')
