@@ -44,10 +44,7 @@ export default function NuevoRemate() {
     if (!session) { setError('Debes ingresar para publicar.'); setCargando(false); return }
 
     const { data: cred } = await supabase
-      .from('creditos')
-      .select('saldo')
-      .eq('usuario_id', session.user.id)
-      .single()
+      .from('creditos').select('saldo').eq('usuario_id', session.user.id).single()
     if (!cred || cred.saldo <= 0) {
       setError('No tienes créditos disponibles para publicar.')
       setCargando(false)
@@ -66,8 +63,7 @@ export default function NuevoRemate() {
     for (let i = 0; i < fotos.length; i++) {
       const nombreArchivo = session.user.id + '_' + Date.now() + '_' + i + '_' + fotos[i].name
       const { error: uploadError } = await supabase.storage
-        .from('fotos-remates')
-        .upload(nombreArchivo, fotos[i])
+        .from('fotos-remates').upload(nombreArchivo, fotos[i])
       if (uploadError) { setError('Error al subir foto: ' + uploadError.message); setCargando(false); return }
       const { data: urlData } = supabase.storage.from('fotos-remates').getPublicUrl(nombreArchivo)
       imagenes_url.push(urlData.publicUrl)
@@ -88,11 +84,7 @@ export default function NuevoRemate() {
     })
     if (err) { setError('Error al publicar: ' + err.message); setCargando(false); return }
 
-    await supabase
-      .from('creditos')
-      .update({ saldo: cred.saldo - 1 })
-      .eq('usuario_id', session.user.id)
-
+    await supabase.from('creditos').update({ saldo: cred.saldo - 1 }).eq('usuario_id', session.user.id)
     setMensaje('¡Publicación creada exitosamente!')
     setTimeout(() => { window.location.href = '/vendedor' }, 1500)
     setCargando(false)
@@ -110,25 +102,21 @@ export default function NuevoRemate() {
   return (
     <main style={{ fontFamily:'sans-serif', background:'#f9f9f9', minHeight:'100vh' }}>
       <Navbar />
-      <div style={{ maxWidth:'640px', margin:'0 auto', padding:'24px' }}>
-        <div style={{ display:'flex', alignItems:'center', gap:'12px', marginBottom:'20px' }}>
-          <a href='/vendedor' style={{ color:'#1D9E75', textDecoration:'none', fontSize:'13px' }}>Mi panel</a>
-          <h1 style={{ fontSize:'20px', fontWeight:'500' }}>Publicar</h1>
+      <div style={{ maxWidth:'640px', margin:'0 auto', padding:'16px' }}>
+        <div style={{ display:'flex', alignItems:'center', gap:'10px', marginBottom:'16px' }}>
+          <a href='/vendedor' style={{ color:'#1D9E75', textDecoration:'none', fontSize:'13px' }}>← Mi panel</a>
+          <h1 style={{ fontSize:'18px', fontWeight:'500' }}>Publicar</h1>
         </div>
 
         {error && <div style={{ background:'#FCEBEB', color:'#A32D2D', padding:'10px 14px', borderRadius:'8px', fontSize:'13px', marginBottom:'14px' }}>{error}</div>}
         {mensaje && <div style={{ background:'#E1F5EE', color:'#085041', padding:'10px 14px', borderRadius:'8px', fontSize:'13px', marginBottom:'14px' }}>{mensaje}</div>}
 
-        {/* TIPO DE PUBLICACION */}
-        <div style={{ background:'#fff', border:'1px solid #eee', borderRadius:'12px', padding:'20px', marginBottom:'14px' }}>
-          <h2 style={{ fontSize:'14px', fontWeight:'500', marginBottom:'14px' }}>Tipo de publicación</h2>
+        {/* TIPO */}
+        <div style={{ background:'#fff', border:'1px solid #eee', borderRadius:'12px', padding:'16px', marginBottom:'12px' }}>
+          <h2 style={{ fontSize:'14px', fontWeight:'500', marginBottom:'12px' }}>Tipo de publicación</h2>
           <div style={{ display:'flex', gap:'10px' }}>
-            <button onClick={() => setTipo('subasta')} style={btnTipo(tipo === 'subasta')}>
-              Subasta
-            </button>
-            <button onClick={() => setTipo('precio_fijo')} style={btnTipo(tipo === 'precio_fijo')}>
-              Precio fijo
-            </button>
+            <button onClick={() => setTipo('subasta')} style={btnTipo(tipo === 'subasta')}>Subasta</button>
+            <button onClick={() => setTipo('precio_fijo')} style={btnTipo(tipo === 'precio_fijo')}>Precio fijo</button>
           </div>
           <p style={{ fontSize:'12px', color:'#999', marginTop:'10px' }}>
             {tipo === 'subasta'
@@ -136,10 +124,10 @@ export default function NuevoRemate() {
               : 'Tu artículo se vende al precio que estableces. Vigencia de 30 días.'}
           </p>
           {tipo === 'precio_fijo' && (
-            <div style={{ marginTop:'12px', display:'flex', alignItems:'center', gap:'10px' }}>
+            <div style={{ marginTop:'10px', display:'flex', alignItems:'flex-start', gap:'10px' }}>
               <input type='checkbox' id='ofertas' checked={permiteOfertas} onChange={e => setPermiteOfertas(e.target.checked)}
-                style={{ width:'16px', height:'16px', cursor:'pointer', accentColor:'#1D9E75' }} />
-              <label htmlFor='ofertas' style={{ fontSize:'13px', color:'#444', cursor:'pointer' }}>
+                style={{ width:'16px', height:'16px', cursor:'pointer', accentColor:'#1D9E75', marginTop:'2px', flexShrink:0 }} />
+              <label htmlFor='ofertas' style={{ fontSize:'13px', color:'#444', cursor:'pointer', lineHeight:'1.5' }}>
                 Permitir que los compradores envíen ofertas por debajo del precio
               </label>
             </div>
@@ -147,19 +135,19 @@ export default function NuevoRemate() {
         </div>
 
         {/* FOTOS */}
-        <div style={{ background:'#fff', border: errores.fotos ? '1px solid #E24B4A' : '1px solid #eee', borderRadius:'12px', padding:'20px', marginBottom:'14px' }}>
+        <div style={{ background:'#fff', border: errores.fotos ? '1px solid #E24B4A' : '1px solid #eee', borderRadius:'12px', padding:'16px', marginBottom:'12px' }}>
           <h2 style={{ fontSize:'14px', fontWeight:'500', marginBottom:'4px' }}>Fotos del producto</h2>
-          <p style={{ fontSize:'12px', color:'#999', marginBottom:'12px' }}>Minimo 1, maximo 3 fotos</p>
+          <p style={{ fontSize:'12px', color:'#999', marginBottom:'12px' }}>Mínimo 1, máximo 3 fotos</p>
           <div style={{ display:'flex', gap:'10px', flexWrap:'wrap' }}>
             {fotosUrl.map((url, i) => (
               <div key={i} style={{ position:'relative' }}>
-                <img src={url} alt='foto' style={{ width:'100px', height:'100px', objectFit:'cover', borderRadius:'8px', border:'1px solid #eee' }} />
+                <img src={url} alt='foto' style={{ width:'90px', height:'90px', objectFit:'cover', borderRadius:'8px', border:'1px solid #eee' }} />
                 <button onClick={() => { setFotos(fotos.filter((_, j) => j !== i)); setFotosUrl(fotosUrl.filter((_, j) => j !== i)) }}
                   style={{ position:'absolute', top:'-8px', right:'-8px', width:'22px', height:'22px', borderRadius:'50%', background:'#E24B4A', color:'white', border:'none', cursor:'pointer', fontSize:'12px' }}>x</button>
               </div>
             ))}
             {fotos.length < 3 && (
-              <label style={{ width:'100px', height:'100px', border:'1px dashed #ddd', borderRadius:'8px', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', cursor:'pointer', background:'#f9f9f9', fontSize:'12px', color:'#999' }}>
+              <label style={{ width:'90px', height:'90px', border:'1px dashed #ddd', borderRadius:'8px', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', cursor:'pointer', background:'#f9f9f9', fontSize:'12px', color:'#999' }}>
                 <span style={{ fontSize:'24px', marginBottom:'4px' }}>+</span>
                 Agregar
                 <input type='file' accept='image/*' style={{ display:'none' }} onChange={(e) => {
@@ -176,20 +164,21 @@ export default function NuevoRemate() {
         </div>
 
         {/* INFO PRODUCTO */}
-        <div style={{ background:'#fff', border:'1px solid #eee', borderRadius:'12px', padding:'20px', marginBottom:'14px' }}>
-          <h2 style={{ fontSize:'14px', fontWeight:'500', marginBottom:'14px' }}>Informacion del producto</h2>
-          <div style={{ marginBottom:'14px' }}>
-            <label style={{ fontSize:'12px', color: errores.titulo ? '#A32D2D' : '#666' }}>Titulo *</label>
+        <div style={{ background:'#fff', border:'1px solid #eee', borderRadius:'12px', padding:'16px', marginBottom:'12px' }}>
+          <h2 style={{ fontSize:'14px', fontWeight:'500', marginBottom:'12px' }}>Información del producto</h2>
+          <div style={{ marginBottom:'12px' }}>
+            <label style={{ fontSize:'12px', color: errores.titulo ? '#A32D2D' : '#666' }}>Título *</label>
             <input name='titulo' value={form.titulo} onChange={handleChange} placeholder='Ej: Moneda Peru 1900' style={errores.titulo ? campoError : campo} />
             {errores.titulo && <p style={textoError}>{errores.titulo}</p>}
           </div>
-          <div style={{ marginBottom:'14px' }}>
-            <label style={{ fontSize:'12px', color:'#666' }}>Descripcion</label>
-            <textarea name='descripcion' value={form.descripcion} onChange={handleChange} placeholder='Describe el estado, que incluye...' style={{ ...campo, height:'80px', resize:'vertical' }} />
+          <div style={{ marginBottom:'12px' }}>
+            <label style={{ fontSize:'12px', color:'#666' }}>Descripción</label>
+            <textarea name='descripcion' value={form.descripcion} onChange={handleChange}
+              placeholder='Describe el estado, que incluye...' style={{ ...campo, height:'80px', resize:'vertical' }} />
           </div>
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px', marginBottom:'14px' }}>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px', marginBottom:'12px' }}>
             <div>
-              <label style={{ fontSize:'12px', color: errores.categoria ? '#A32D2D' : '#666' }}>Categoria *</label>
+              <label style={{ fontSize:'12px', color: errores.categoria ? '#A32D2D' : '#666' }}>Categoría *</label>
               <select name='categoria' value={form.categoria} onChange={handleChange} style={errores.categoria ? campoError : campo}>
                 <option value=''>Selecciona</option>
                 <option>Antiguedades</option>
@@ -205,24 +194,27 @@ export default function NuevoRemate() {
               {errores.categoria && <p style={textoError}>{errores.categoria}</p>}
             </div>
             <div>
-              <label style={{ fontSize:'12px', color:'#666' }}>Condicion</label>
+              <label style={{ fontSize:'12px', color:'#666' }}>Condición</label>
               <select name='condicion' value={form.condicion} onChange={handleChange} style={campo}>
-                <option>Nuevo</option><option>Como nuevo</option><option>Buen estado</option><option>Usado</option>
+                <option>Nuevo</option>
+                <option>Como nuevo</option>
+                <option>Buen estado</option>
+                <option>Usado</option>
               </select>
             </div>
           </div>
           <div>
-            <label style={{ fontSize:'12px', color:'#666' }}>Ubicacion</label>
+            <label style={{ fontSize:'12px', color:'#666' }}>Ubicación</label>
             <input name='ubicacion' value={form.ubicacion} onChange={handleChange} placeholder='Ej: Lima, Miraflores' style={campo} />
           </div>
         </div>
 
         {/* CONFIGURACION */}
-        <div style={{ background:'#fff', border:'1px solid #eee', borderRadius:'12px', padding:'20px', marginBottom:'14px' }}>
-          <h2 style={{ fontSize:'14px', fontWeight:'500', marginBottom:'14px' }}>
-            {tipo === 'subasta' ? 'Configuracion de la subasta' : 'Configuracion del precio'}
+        <div style={{ background:'#fff', border:'1px solid #eee', borderRadius:'12px', padding:'16px', marginBottom:'16px' }}>
+          <h2 style={{ fontSize:'14px', fontWeight:'500', marginBottom:'12px' }}>
+            {tipo === 'subasta' ? 'Configuración de la subasta' : 'Configuración del precio'}
           </h2>
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px', marginBottom: tipo === 'subasta' ? '14px' : '0' }}>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px', marginBottom: tipo === 'subasta' ? '12px' : '0' }}>
             <div>
               <label style={{ fontSize:'12px', color: errores.precio_inicial ? '#A32D2D' : '#666' }}>
                 {tipo === 'subasta' ? 'Precio inicial (S/) *' : 'Precio fijo (S/) *'}
@@ -233,34 +225,37 @@ export default function NuevoRemate() {
             </div>
             {tipo === 'subasta' && (
               <div>
-                <label style={{ fontSize:'12px', color:'#666' }}>Incremento minimo (S/)</label>
+                <label style={{ fontSize:'12px', color:'#666' }}>Incremento mínimo (S/)</label>
                 <input name='incremento_minimo' type='number' value={form.incremento_minimo} onChange={handleChange} placeholder='20' style={campo} />
               </div>
             )}
           </div>
           {tipo === 'subasta' && (
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px' }}>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px' }}>
               <div>
                 <label style={{ fontSize:'12px', color:'#666' }}>Compra directa (opcional)</label>
                 <input name='precio_directo' type='number' value={form.precio_directo} onChange={handleChange} placeholder='3500' style={campo} />
               </div>
               <div>
-                <label style={{ fontSize:'12px', color:'#666' }}>Duracion</label>
+                <label style={{ fontSize:'12px', color:'#666' }}>Duración</label>
                 <select name='duracion' value={form.duracion} onChange={handleChange} style={campo}>
-                  <option value='1'>1 dia</option><option value='3'>3 dias</option>
-                  <option value='5'>5 dias</option><option value='7'>7 dias</option>
+                  <option value='1'>1 día</option>
+                  <option value='3'>3 días</option>
+                  <option value='5'>5 días</option>
+                  <option value='7'>7 días</option>
                 </select>
               </div>
             </div>
           )}
           {tipo === 'precio_fijo' && (
-            <p style={{ fontSize:'12px', color:'#999', marginTop:'10px' }}>
+            <p style={{ fontSize:'12px', color:'#999', marginTop:'8px' }}>
               La publicación tendrá una vigencia de 30 días o hasta que alguien compre el artículo.
             </p>
           )}
         </div>
 
-        <button onClick={publicar} disabled={cargando} style={{ width:'100%', padding:'12px', background: cargando ? '#9FE1CB' : '#1D9E75', color:'white', border:'none', borderRadius:'8px', fontSize:'15px', fontWeight:'500', cursor:'pointer' }}>
+        <button onClick={publicar} disabled={cargando}
+          style={{ width:'100%', padding:'12px', background: cargando ? '#9FE1CB' : '#1D9E75', color:'white', border:'none', borderRadius:'8px', fontSize:'15px', fontWeight:'500', cursor:'pointer' }}>
           {cargando ? 'Publicando...' : tipo === 'subasta' ? 'Publicar subasta' : 'Publicar a precio fijo'}
         </button>
       </div>
