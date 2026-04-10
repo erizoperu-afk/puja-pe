@@ -63,7 +63,6 @@ export default function NuevoRemate() {
       return
     }
 
-    // Calcular fecha de inicio
     let fechaInicio = null
     let esInmediato = true
     if (programarInicio && form.fecha_inicio && form.hora_inicio) {
@@ -71,7 +70,6 @@ export default function NuevoRemate() {
       esInmediato = false
     }
 
-    // Calcular fecha de fin desde el inicio
     const base = fechaInicio || new Date()
     const fechaFin = new Date(base)
     if (tipo === 'subasta') {
@@ -92,7 +90,7 @@ export default function NuevoRemate() {
     }
     if (imagenes_url.length > 0) imagen_url = imagenes_url[0]
 
-    const { error: err } = await supabase.from('remates').insert({
+    const { data: nuevoRemate, error: err } = await supabase.from('remates').insert({
       titulo: form.titulo, descripcion: form.descripcion,
       precio_inicial: Number(form.precio_inicial), precio_actual: Number(form.precio_inicial),
       precio_directo: form.precio_directo ? Number(form.precio_directo) : null,
@@ -105,23 +103,41 @@ export default function NuevoRemate() {
       imagen_url, imagenes_url,
       tipo_publicacion: tipo,
       permite_ofertas: tipo === 'precio_fijo' ? permiteOfertas : false,
-    })
+    }).select().single()
     if (err) { setError('Error al publicar: ' + err.message); setCargando(false); return }
 
     await supabase.from('creditos').update({ saldo: cred.saldo - 1 }).eq('usuario_id', session.user.id)
 
+    // Publicar en Facebook automaticamente (solo si es inmediato)
+    if (esInmediato && nuevoRemate) {
+      try {
+        await fetch('/api/facebook/publicar', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            titulo: form.titulo,
+            precio: form.precio_inicial,
+            categoria: form.categoria,
+            imagen_url: imagen_url,
+            remate_id: nuevoRemate.id,
+            tipo: tipo
+          })
+        })
+      } catch (e) {
+        console.log('Error publicando en Facebook:', e)
+      }
+    }
+
     if (programarInicio) {
       setMensaje('¡Publicación programada! Se activará el ' + new Date(form.fecha_inicio + 'T' + form.hora_inicio).toLocaleDateString('es-PE', { day:'numeric', month:'long', year:'numeric', hour:'2-digit', minute:'2-digit' }))
     } else {
-      setMensaje('¡Publicación creada exitosamente!')
+      setMensaje('¡Publicación creada y compartida en Facebook!')
     }
     setTimeout(() => { window.location.href = '/vendedor' }, 2000)
     setCargando(false)
   }
 
-  // Fecha mínima = hoy
   const hoy = new Date().toISOString().split('T')[0]
-
   const campo = { width:'100%', padding:'10px 12px', borderRadius:'8px', border:'1px solid #ddd', fontSize:'14px', marginTop:'5px', boxSizing:'border-box' }
   const campoError = { ...campo, border:'1px solid #E24B4A' }
   const textoError = { fontSize:'12px', color:'#A32D2D', marginTop:'4px' }
@@ -301,7 +317,6 @@ export default function NuevoRemate() {
               </button>
             </div>
           </div>
-
           {programarInicio && (
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px' }}>
               <div>
