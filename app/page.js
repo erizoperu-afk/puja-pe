@@ -208,7 +208,7 @@ export default function Home() {
           <div style={{ display:'flex', alignItems:'center', gap:'8px', marginBottom:'16px', flexWrap:'wrap' }}>
             <h2 style={{ fontSize:'18px', fontWeight:'700', letterSpacing:'0.5px' }}>LOS REMATES MAS HOT</h2>
             <span style={{ fontSize:'18px' }}>🔥🔥🔥🔥</span>
-            <span style={{ fontSize:'12px', color:'#999' }}>— Los que mas pujas tienen</span>
+           
           </div>
           <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(160px, 1fr))', gap:'12px' }}>
             {hot.map(remate => (
@@ -229,7 +229,7 @@ export default function Home() {
           <div style={{ display:'flex', alignItems:'center', gap:'8px', marginBottom:'16px', flexWrap:'wrap' }}>
             <span style={{ fontSize:'18px' }}>✨</span>
             <h2 style={{ fontSize:'18px', fontWeight:'700', letterSpacing:'0.5px' }}>LO NUEVO</h2>
-            <span style={{ fontSize:'12px', color:'#999' }}>— Las ultimas 20 publicaciones</span>
+            
           </div>
           <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(160px, 1fr))', gap:'12px' }}>
             {nuevos.map(remate => (
