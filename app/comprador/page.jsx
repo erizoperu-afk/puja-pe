@@ -15,6 +15,7 @@ export default function PanelComprador() {
   const [notificaciones, setNotificaciones] = useState([])
   const [cargando, setCargando] = useState(true)
   const [pagina, setPagina] = useState(1)
+  const [contactosVendedor, setContactosVendedor] = useState({})
 
   useEffect(() => {
     async function cargarDatos() {
@@ -22,14 +23,38 @@ export default function PanelComprador() {
       if (!session) { window.location.href = '/login'; return }
       setUsuario(session.user)
       const uid = session.user.id
+
       const { data: misPujas } = await supabase.from('pujas').select('*, remates(*)').eq('usuario_id', uid).order('created_at', { ascending: false })
       setPujas(misPujas || [])
+
       const { data: misFavoritos } = await supabase.from('favoritos').select('*, remates(*)').eq('usuario_id', uid).order('created_at', { ascending: false })
       setFavoritos(misFavoritos || [])
+
       const { data: misGanados } = await supabase.from('pujas').select('*, remates(*)').eq('usuario_id', uid).eq('ganador', true).order('created_at', { ascending: false })
       setGanados(misGanados || [])
+
       const { data: misNotis } = await supabase.from('notificaciones').select('*, remates(*)').eq('usuario_id', uid).order('created_at', { ascending: false })
       setNotificaciones(misNotis || [])
+
+      // Obtener datos de contacto de vendedores para remates ganados
+      // También buscar compras directas (precio fijo)
+      const { data: compras } = await supabase
+        .from('remates')
+        .select('*')
+        .eq('comprador_id', uid)
+        .eq('activo', false)
+
+      const todosGanados = [...(misGanados || []), ...(compras || []).map(c => ({ remates: c }))]
+      const contactos = {}
+      for (const item of todosGanados) {
+        const remate = item.remates
+        if (remate?.vendedor_id && !contactos[remate.id]) {
+          const { data: contacto } = await supabase.rpc('get_datos_contacto', { p_usuario_id: remate.vendedor_id })
+          if (contacto) contactos[remate.id] = contacto
+        }
+      }
+      setContactosVendedor(contactos)
+
       setCargando(false)
     }
     cargarDatos()
@@ -48,7 +73,7 @@ export default function PanelComprador() {
   }
 
   const estilo = {
-    tarjeta: { background:'#fff', border:'1px solid #eee', borderRadius:'12px', padding:'12px', marginBottom:'10px', display:'flex', alignItems:'center', gap:'12px', flexWrap:'wrap' },
+    tarjeta: { background:'#fff', border:'1px solid #eee', borderRadius:'12px', padding:'12px', marginBottom:'10px' },
     tab: (activo) => ({ padding:'8px 14px', borderRadius:'20px', border:'none', cursor:'pointer', fontSize:'12px', fontWeight:'500', background: activo ? '#1D9E75' : '#f5f5f5', color: activo ? '#fff' : '#666', whiteSpace:'nowrap' }),
     badge: (color) => ({ fontSize:'11px', background: color === 'verde' ? '#E1F5EE' : color === 'rojo' ? '#FCEBEB' : '#f5f5f5', color: color === 'verde' ? '#085041' : color === 'rojo' ? '#A32D2D' : '#999', padding:'2px 8px', borderRadius:'20px', flexShrink:0 }),
     vacio: { textAlign:'center', padding:'40px', background:'#f9f9f9', borderRadius:'12px', color:'#999', fontSize:'14px' }
@@ -76,6 +101,30 @@ export default function PanelComprador() {
 
   function paginar(items) {
     return items.slice((pagina - 1) * POR_PAGINA, pagina * POR_PAGINA)
+  }
+
+  function ContactoVendedor({ remateId }) {
+    const contacto = contactosVendedor[remateId]
+    if (!contacto) return null
+    return (
+      <div style={{ marginTop:'10px', paddingTop:'10px', borderTop:'1px solid #f0f0f0', background:'#E1F5EE', borderRadius:'8px', padding:'12px' }}>
+        <p style={{ fontSize:'12px', fontWeight:'500', color:'#085041', marginBottom:'8px' }}>📞 Datos del vendedor</p>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(160px, 1fr))', gap:'8px' }}>
+          <div>
+            <p style={{ fontSize:'11px', color:'#666', marginBottom:'2px' }}>Nombre completo</p>
+            <p style={{ fontSize:'13px', fontWeight:'500', color:'#333' }}>{contacto.nombre} {contacto.apellido}</p>
+          </div>
+          <div>
+            <p style={{ fontSize:'11px', color:'#666', marginBottom:'2px' }}>Celular</p>
+            <p style={{ fontSize:'13px', fontWeight:'500', color:'#333' }}>+51 {contacto.celular}</p>
+          </div>
+          <div>
+            <p style={{ fontSize:'11px', color:'#666', marginBottom:'2px' }}>Nickname</p>
+            <p style={{ fontSize:'13px', fontWeight:'500', color:'#333' }}>{contacto.nickname}</p>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   if (cargando) return (
@@ -119,18 +168,20 @@ export default function PanelComprador() {
               const ganando = remate?.precio_actual === puja.monto
               return (
                 <div key={puja.id} style={estilo.tarjeta}>
-                  <div style={{ width:'48px', height:'48px', background:'#f5f5f5', borderRadius:'8px', border:'1px solid #eee', flexShrink:0, overflow:'hidden' }}>
-                    {remate?.imagen_url && <img src={remate.imagen_url} alt='' style={{ width:'100%', height:'100%', objectFit:'cover' }} />}
+                  <div style={{ display:'flex', alignItems:'center', gap:'12px', flexWrap:'wrap' }}>
+                    <div style={{ width:'48px', height:'48px', background:'#f5f5f5', borderRadius:'8px', border:'1px solid #eee', flexShrink:0, overflow:'hidden' }}>
+                      {remate?.imagen_url && <img src={remate.imagen_url} alt='' style={{ width:'100%', height:'100%', objectFit:'cover' }} />}
+                    </div>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <p style={{ fontWeight:'500', fontSize:'13px', marginBottom:'2px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{remate?.titulo}</p>
+                      <p style={{ fontSize:'11px', color:'#999' }}>Tu puja: S/ {Number(puja.monto).toLocaleString()}</p>
+                    </div>
+                    <div style={{ textAlign:'right', flexShrink:0 }}>
+                      <p style={{ fontSize:'14px', fontWeight:'500', marginBottom:'4px' }}>S/ {Number(remate?.precio_actual).toLocaleString()}</p>
+                      <span style={estilo.badge(ganando ? 'verde' : 'rojo')}>{ganando ? 'Ganando' : 'Superado'}</span>
+                    </div>
+                    <a href={'/remate/' + remate?.id} style={{ fontSize:'12px', color:'#1D9E75', textDecoration:'none', padding:'6px 10px', border:'1px solid #1D9E75', borderRadius:'8px', flexShrink:0 }}>Ver</a>
                   </div>
-                  <div style={{ flex:1, minWidth:0 }}>
-                    <p style={{ fontWeight:'500', fontSize:'13px', marginBottom:'2px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{remate?.titulo}</p>
-                    <p style={{ fontSize:'11px', color:'#999' }}>Tu puja: S/ {Number(puja.monto).toLocaleString()}</p>
-                  </div>
-                  <div style={{ textAlign:'right', flexShrink:0 }}>
-                    <p style={{ fontSize:'14px', fontWeight:'500', marginBottom:'4px' }}>S/ {Number(remate?.precio_actual).toLocaleString()}</p>
-                    <span style={estilo.badge(ganando ? 'verde' : 'rojo')}>{ganando ? 'Ganando' : 'Superado'}</span>
-                  </div>
-                  <a href={'/remate/' + remate?.id} style={{ fontSize:'12px', color:'#1D9E75', textDecoration:'none', padding:'6px 10px', border:'1px solid #1D9E75', borderRadius:'8px', flexShrink:0 }}>Ver</a>
                 </div>
               )
             })}
@@ -145,18 +196,21 @@ export default function PanelComprador() {
               const remate = puja.remates
               return (
                 <div key={puja.id} style={estilo.tarjeta}>
-                  <div style={{ width:'48px', height:'48px', background:'#f5f5f5', borderRadius:'8px', border:'1px solid #eee', flexShrink:0, overflow:'hidden' }}>
-                    {remate?.imagen_url && <img src={remate.imagen_url} alt='' style={{ width:'100%', height:'100%', objectFit:'cover' }} />}
+                  <div style={{ display:'flex', alignItems:'center', gap:'12px', flexWrap:'wrap' }}>
+                    <div style={{ width:'48px', height:'48px', background:'#f5f5f5', borderRadius:'8px', border:'1px solid #eee', flexShrink:0, overflow:'hidden' }}>
+                      {remate?.imagen_url && <img src={remate.imagen_url} alt='' style={{ width:'100%', height:'100%', objectFit:'cover' }} />}
+                    </div>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <p style={{ fontWeight:'500', fontSize:'13px', marginBottom:'2px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{remate?.titulo}</p>
+                      <p style={{ fontSize:'11px', color:'#999' }}>{remate?.categoria}</p>
+                    </div>
+                    <div style={{ textAlign:'right', flexShrink:0 }}>
+                      <p style={{ fontSize:'14px', fontWeight:'500', marginBottom:'4px' }}>S/ {Number(puja.monto).toLocaleString()}</p>
+                      <span style={estilo.badge('verde')}>Ganado</span>
+                    </div>
+                    <a href={'/remate/' + remate?.id} style={{ fontSize:'12px', color:'#1D9E75', textDecoration:'none', padding:'6px 10px', border:'1px solid #1D9E75', borderRadius:'8px', flexShrink:0 }}>Ver</a>
                   </div>
-                  <div style={{ flex:1, minWidth:0 }}>
-                    <p style={{ fontWeight:'500', fontSize:'13px', marginBottom:'2px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{remate?.titulo}</p>
-                    <p style={{ fontSize:'11px', color:'#999' }}>{remate?.categoria}</p>
-                  </div>
-                  <div style={{ textAlign:'right', flexShrink:0 }}>
-                    <p style={{ fontSize:'14px', fontWeight:'500', marginBottom:'4px' }}>S/ {Number(puja.monto).toLocaleString()}</p>
-                    <span style={estilo.badge('verde')}>Ganado</span>
-                  </div>
-                  <a href={'/remate/' + remate?.id} style={{ fontSize:'12px', color:'#1D9E75', textDecoration:'none', padding:'6px 10px', border:'1px solid #1D9E75', borderRadius:'8px', flexShrink:0 }}>Ver</a>
+                  <ContactoVendedor remateId={remate?.id} />
                 </div>
               )
             })}
@@ -170,7 +224,7 @@ export default function PanelComprador() {
             {paginar(favoritos).map((fav) => {
               const remate = fav.remates
               return (
-                <div key={fav.id} style={estilo.tarjeta}>
+                <div key={fav.id} style={{ ...estilo.tarjeta, display:'flex', alignItems:'center', gap:'12px', flexWrap:'wrap' }}>
                   <div style={{ width:'48px', height:'48px', background:'#f5f5f5', borderRadius:'8px', border:'1px solid #eee', flexShrink:0, overflow:'hidden' }}>
                     {remate?.imagen_url && <img src={remate.imagen_url} alt='' style={{ width:'100%', height:'100%', objectFit:'cover' }} />}
                   </div>
@@ -192,7 +246,7 @@ export default function PanelComprador() {
           <div>
             {notificaciones.length === 0 && <div style={estilo.vacio}>No tienes notificaciones aún.</div>}
             {paginar(notificaciones).map((noti) => (
-              <div key={noti.id} style={{ ...estilo.tarjeta, background: noti.leida ? '#fff' : '#F0FBF7', border: noti.leida ? '1px solid #eee' : '1px solid #9FE1CB' }}>
+              <div key={noti.id} style={{ ...estilo.tarjeta, display:'flex', alignItems:'center', gap:'12px', flexWrap:'wrap', background: noti.leida ? '#fff' : '#F0FBF7', border: noti.leida ? '1px solid #eee' : '1px solid #9FE1CB' }}>
                 <div style={{ width:'10px', height:'10px', borderRadius:'50%', background: noti.leida ? '#ddd' : '#1D9E75', flexShrink:0 }}></div>
                 <div style={{ flex:1, minWidth:0 }}>
                   <p style={{ fontSize:'13px', marginBottom:'3px' }}>{noti.mensaje}</p>
@@ -208,12 +262,6 @@ export default function PanelComprador() {
           </div>
         )}
       </div>
-
-      <style>{`
-        @media (min-width: 600px) {
-          .grid-metricas { grid-template-columns: repeat(4, 1fr) !important; }
-        }
-      `}</style>
     </main>
   )
 }
