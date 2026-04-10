@@ -7,11 +7,13 @@ import Navbar from '../../Navbar'
 export default function NuevoRemate() {
   const [tipo, setTipo] = useState('subasta')
   const [permiteOfertas, setPermiteOfertas] = useState(false)
+  const [programarInicio, setProgramarInicio] = useState(false)
   const [form, setForm] = useState({
     titulo: '', descripcion: '', precio_inicial: '',
     precio_directo: '', incremento_minimo: '20',
     categoria: '', condicion: 'Como nuevo',
-    ubicacion: '', duracion: '3'
+    ubicacion: '', duracion: '3',
+    fecha_inicio: '', hora_inicio: ''
   })
   const [fotos, setFotos] = useState([])
   const [fotosUrl, setFotosUrl] = useState([])
@@ -31,6 +33,16 @@ export default function NuevoRemate() {
     if (!form.categoria) nuevosErrores.categoria = 'La categoría es obligatoria.'
     if (!form.precio_inicial) nuevosErrores.precio_inicial = 'El precio inicial es obligatorio.'
     if (fotos.length === 0) nuevosErrores.fotos = 'Agrega al menos 1 foto.'
+    if (programarInicio) {
+      if (!form.fecha_inicio) nuevosErrores.fecha_inicio = 'La fecha de inicio es obligatoria.'
+      if (!form.hora_inicio) nuevosErrores.hora_inicio = 'La hora de inicio es obligatoria.'
+      if (form.fecha_inicio && form.hora_inicio) {
+        const inicioSeleccionado = new Date(form.fecha_inicio + 'T' + form.hora_inicio)
+        if (inicioSeleccionado <= new Date()) {
+          nuevosErrores.fecha_inicio = 'La fecha y hora de inicio debe ser en el futuro.'
+        }
+      }
+    }
     setErrores(nuevosErrores)
     return Object.keys(nuevosErrores).length === 0
   }
@@ -51,7 +63,17 @@ export default function NuevoRemate() {
       return
     }
 
-    const fechaFin = new Date()
+    // Calcular fecha de inicio
+    let fechaInicio = null
+    let esInmediato = true
+    if (programarInicio && form.fecha_inicio && form.hora_inicio) {
+      fechaInicio = new Date(form.fecha_inicio + 'T' + form.hora_inicio)
+      esInmediato = false
+    }
+
+    // Calcular fecha de fin desde el inicio
+    const base = fechaInicio || new Date()
+    const fechaFin = new Date(base)
     if (tipo === 'subasta') {
       fechaFin.setDate(fechaFin.getDate() + Number(form.duracion))
     } else {
@@ -77,7 +99,9 @@ export default function NuevoRemate() {
       incremento_minimo: tipo === 'subasta' ? Number(form.incremento_minimo) : null,
       categoria: form.categoria, condicion: form.condicion,
       ubicacion: form.ubicacion, vendedor_id: session.user.id,
-      fecha_fin: fechaFin.toISOString(), activo: true,
+      fecha_fin: fechaFin.toISOString(),
+      fecha_inicio: fechaInicio ? fechaInicio.toISOString() : null,
+      activo: esInmediato,
       imagen_url, imagenes_url,
       tipo_publicacion: tipo,
       permite_ofertas: tipo === 'precio_fijo' ? permiteOfertas : false,
@@ -85,10 +109,18 @@ export default function NuevoRemate() {
     if (err) { setError('Error al publicar: ' + err.message); setCargando(false); return }
 
     await supabase.from('creditos').update({ saldo: cred.saldo - 1 }).eq('usuario_id', session.user.id)
-    setMensaje('¡Publicación creada exitosamente!')
-    setTimeout(() => { window.location.href = '/vendedor' }, 1500)
+
+    if (programarInicio) {
+      setMensaje('¡Publicación programada! Se activará el ' + new Date(form.fecha_inicio + 'T' + form.hora_inicio).toLocaleDateString('es-PE', { day:'numeric', month:'long', year:'numeric', hour:'2-digit', minute:'2-digit' }))
+    } else {
+      setMensaje('¡Publicación creada exitosamente!')
+    }
+    setTimeout(() => { window.location.href = '/vendedor' }, 2000)
     setCargando(false)
   }
+
+  // Fecha mínima = hoy
+  const hoy = new Date().toISOString().split('T')[0]
 
   const campo = { width:'100%', padding:'10px 12px', borderRadius:'8px', border:'1px solid #ddd', fontSize:'14px', marginTop:'5px', boxSizing:'border-box' }
   const campoError = { ...campo, border:'1px solid #E24B4A' }
@@ -210,7 +242,7 @@ export default function NuevoRemate() {
         </div>
 
         {/* CONFIGURACION */}
-        <div style={{ background:'#fff', border:'1px solid #eee', borderRadius:'12px', padding:'16px', marginBottom:'16px' }}>
+        <div style={{ background:'#fff', border:'1px solid #eee', borderRadius:'12px', padding:'16px', marginBottom:'12px' }}>
           <h2 style={{ fontSize:'14px', fontWeight:'500', marginBottom:'12px' }}>
             {tipo === 'subasta' ? 'Configuración de la subasta' : 'Configuración del precio'}
           </h2>
@@ -254,9 +286,48 @@ export default function NuevoRemate() {
           )}
         </div>
 
+        {/* PROGRAMAR INICIO */}
+        <div style={{ background:'#fff', border:'1px solid #eee', borderRadius:'12px', padding:'16px', marginBottom:'16px' }}>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom: programarInicio ? '14px' : '0' }}>
+            <div>
+              <h2 style={{ fontSize:'14px', fontWeight:'500', marginBottom:'2px' }}>📅 Programar inicio</h2>
+              <p style={{ fontSize:'12px', color:'#999' }}>Elige cuándo se activa tu publicación</p>
+            </div>
+            <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
+              <span style={{ fontSize:'12px', color:'#999' }}>{programarInicio ? 'Programado' : 'Inmediato'}</span>
+              <button onClick={() => setProgramarInicio(!programarInicio)}
+                style={{ width:'44px', height:'24px', borderRadius:'12px', border:'none', cursor:'pointer', background: programarInicio ? '#1D9E75' : '#ddd', position:'relative', transition:'background 0.2s' }}>
+                <div style={{ width:'18px', height:'18px', borderRadius:'50%', background:'white', position:'absolute', top:'3px', transition:'left 0.2s', left: programarInicio ? '23px' : '3px' }}></div>
+              </button>
+            </div>
+          </div>
+
+          {programarInicio && (
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px' }}>
+              <div>
+                <label style={{ fontSize:'12px', color: errores.fecha_inicio ? '#A32D2D' : '#666' }}>Fecha de inicio *</label>
+                <input type='date' name='fecha_inicio' value={form.fecha_inicio} onChange={handleChange}
+                  min={hoy} style={errores.fecha_inicio ? campoError : campo} />
+                {errores.fecha_inicio && <p style={textoError}>{errores.fecha_inicio}</p>}
+              </div>
+              <div>
+                <label style={{ fontSize:'12px', color: errores.hora_inicio ? '#A32D2D' : '#666' }}>Hora de inicio *</label>
+                <input type='time' name='hora_inicio' value={form.hora_inicio} onChange={handleChange}
+                  style={errores.hora_inicio ? campoError : campo} />
+                {errores.hora_inicio && <p style={textoError}>{errores.hora_inicio}</p>}
+              </div>
+              {form.fecha_inicio && form.hora_inicio && (
+                <div style={{ gridColumn:'1/-1', background:'#E1F5EE', borderRadius:'8px', padding:'10px', fontSize:'12px', color:'#085041' }}>
+                  ✅ Tu publicación se activará el {new Date(form.fecha_inicio + 'T' + form.hora_inicio).toLocaleDateString('es-PE', { weekday:'long', day:'numeric', month:'long', year:'numeric', hour:'2-digit', minute:'2-digit' })}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
         <button onClick={publicar} disabled={cargando}
           style={{ width:'100%', padding:'12px', background: cargando ? '#9FE1CB' : '#1D9E75', color:'white', border:'none', borderRadius:'8px', fontSize:'15px', fontWeight:'500', cursor:'pointer' }}>
-          {cargando ? 'Publicando...' : tipo === 'subasta' ? 'Publicar subasta' : 'Publicar a precio fijo'}
+          {cargando ? 'Publicando...' : programarInicio ? '📅 Programar publicación' : tipo === 'subasta' ? 'Publicar subasta' : 'Publicar a precio fijo'}
         </button>
       </div>
     </main>
