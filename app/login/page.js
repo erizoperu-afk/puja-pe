@@ -19,7 +19,7 @@ function CampoPassword({ value, onChange, placeholder, ver, setVer }) {
         type='button'
         onMouseDown={e => e.preventDefault()}
         onClick={() => setVer(v => !v)}
-        style={{ position:'absolute', right:'10px', top:'50%', transform:'translateY(-50%)', background:'none', border:'none', cursor:'pointer', padding:'4px', color:'#999', fontSize:'18px', lineHeight:1, display:'flex', alignItems:'center' }}>
+        style={{ position:'absolute', right:'10px', top:'50%', transform:'translateY(-50%)', background:'none', border:'none', cursor:'pointer', padding:'4px', color:'#999', fontSize:'18px', lineHeight:1 }}>
         👁
       </button>
     </div>
@@ -73,13 +73,11 @@ export default function Login() {
     if (!email.trim()) { setError('El correo es obligatorio.'); setCargando(false); return }
     if (password.length < 6) { setError('La contraseña debe tener mínimo 6 caracteres.'); setCargando(false); return }
 
-    // Verificar nickname único
     const { data: nickExiste } = await supabase.from('usuarios').select('id').eq('nickname', nickname.trim()).maybeSingle()
     if (nickExiste) { setError('El nickname "' + nickname.trim() + '" no está disponible. Elige otro.'); setCargando(false); return }
 
-    // Verificar celular único
     const { data: celularExiste } = await supabase.from('usuarios').select('id').eq('celular', celular.trim()).maybeSingle()
-    if (celularExiste) { setError('El número de celular +51 ' + celular.trim() + ' ya está registrado.'); setCargando(false); return }
+    if (celularExiste) { setError('El número +51 ' + celular.trim() + ' ya está registrado.'); setCargando(false); return }
 
     const { data, error: errAuth } = await supabase.auth.signUp({
       email, password,
@@ -97,6 +95,7 @@ export default function Login() {
       })
     }
 
+    setEmailONickname(email)
     setCuentaCreada(true)
     setPassword('')
     setCargando(false)
@@ -161,24 +160,18 @@ export default function Login() {
             <div style={{ textAlign:'center' }}>
               <div style={{ width:'56px', height:'56px', borderRadius:'50%', background:'#E1F5EE', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 16px', fontSize:'24px' }}>✓</div>
               <h2 style={{ fontSize:'18px', fontWeight:'500', marginBottom:'8px' }}>¡Cuenta creada!</h2>
-              <p style={{ fontSize:'14px', color:'#666', marginBottom:'24px' }}>Ahora ingresa con tu correo y contraseña para empezar.</p>
+              <p style={{ fontSize:'14px', color:'#666', marginBottom:'24px' }}>Ahora ingresa con tu correo o nickname y contraseña para empezar.</p>
               <div style={{ marginBottom:'14px', textAlign:'left' }}>
-                <label style={{ fontSize:'12px', color:'#666', display:'block', marginBottom:'5px' }}>Correo electrónico</label>
-                <input type="email" value={email} onChange={e => setEmail(e.target.value)} style={campo} />
+                <label style={{ fontSize:'12px', color:'#666', display:'block', marginBottom:'5px' }}>Correo electrónico o nickname</label>
+                <input type="text" placeholder="tu@correo.com o tu_nickname" value={emailONickname}
+                  onChange={e => setEmailONickname(e.target.value)} style={campo} />
               </div>
               <div style={{ marginBottom:'20px', textAlign:'left' }}>
                 <label style={{ fontSize:'12px', color:'#666', display:'block', marginBottom:'5px' }}>Contraseña</label>
                 <CampoPassword value={password} onChange={e => setPassword(e.target.value)} placeholder='Tu contraseña' ver={verPass} setVer={setVerPass} />
               </div>
               {error && <div style={{ background:'#FCEBEB', color:'#A32D2D', padding:'10px 14px', borderRadius:'8px', fontSize:'13px', marginBottom:'14px' }}>{error}</div>}
-              <button onClick={async () => {
-  setCargando(true)
-  setError('')
-  const { error } = await supabase.auth.signInWithPassword({ email, password })
-  if (error) { setError('Correo o contraseña incorrectos.'); setCargando(false); return }
-  window.location.href = '/'
-  setCargando(false)
-}} disabled={cargando}
+              <button onClick={handleLogin} disabled={cargando}
                 style={{ width:'100%', padding:'11px', borderRadius:'8px', border:'none', background: cargando ? '#9FE1CB' : '#1D9E75', color:'white', fontSize:'15px', fontWeight:'500', cursor:'pointer' }}>
                 {cargando ? 'Ingresando...' : 'Ingresar ahora'}
               </button>
