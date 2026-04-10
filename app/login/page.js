@@ -25,13 +25,11 @@ export default function Login() {
     setCargando(true)
     setError('')
     let emailFinal = emailONickname.trim()
-
     if (!emailFinal.includes('@')) {
       const { data, error: err } = await supabase.rpc('get_email_by_nickname', { p_nickname: emailFinal })
       if (err || !data) { setError('Nickname no encontrado.'); setCargando(false); return }
       emailFinal = data
     }
-
     const { error } = await supabase.auth.signInWithPassword({ email: emailFinal, password })
     if (error) {
       setError('Correo/nickname o contraseña incorrectos.')
@@ -96,11 +94,19 @@ export default function Login() {
   function CampoPassword({ value, onChange, placeholder, ver, setVer }) {
     return (
       <div style={{ position:'relative' }}>
-        <input type={ver ? 'text' : 'password'} placeholder={placeholder} value={value} onChange={onChange}
-          style={{ ...campo, paddingRight:'40px' }} />
-        <button type='button' onClick={() => setVer(!ver)}
-          style={{ position:'absolute', right:'10px', top:'50%', transform:'translateY(-50%)', background:'none', border:'none', cursor:'pointer', fontSize:'16px', color:'#999', padding:'4px' }}>
-          {ver ? '🙈' : '👁'}
+        <input
+          type={ver ? 'text' : 'password'}
+          placeholder={placeholder}
+          value={value}
+          onChange={onChange}
+          style={{ ...campo, paddingRight:'40px' }}
+        />
+        <button
+          type='button'
+          onMouseDown={e => e.preventDefault()}
+          onClick={() => setVer(!ver)}
+          style={{ position:'absolute', right:'10px', top:'50%', transform:'translateY(-50%)', background:'none', border:'none', cursor:'pointer', padding:'4px', color:'#999', fontSize:'18px', lineHeight:1 }}>
+          👁
         </button>
       </div>
     )
@@ -191,8 +197,7 @@ export default function Login() {
                   </div>
                   <div style={{ marginBottom:'8px' }}>
                     <label style={{ fontSize:'12px', color:'#666', display:'block', marginBottom:'5px' }}>Contraseña</label>
-                    <CampoPassword value={password} onChange={e => setPassword(e.target.value)}
-                      placeholder='Tu contraseña' ver={verPass} setVer={setVerPass} />
+                    <CampoPassword value={password} onChange={e => setPassword(e.target.value)} placeholder='Tu contraseña' ver={verPass} setVer={setVerPass} />
                   </div>
                   <div style={{ textAlign:'right', marginBottom:'16px' }}>
                     <span onClick={() => { setRecuperando(true); setError('') }} style={{ fontSize:'12px', color:'#1D9E75', cursor:'pointer' }}>
@@ -239,8 +244,7 @@ export default function Login() {
                   </div>
                   <div style={{ marginBottom:'20px' }}>
                     <label style={{ fontSize:'12px', color:'#666', display:'block', marginBottom:'5px' }}>Contraseña *</label>
-                    <CampoPassword value={password} onChange={e => setPassword(e.target.value)}
-                      placeholder='Mínimo 6 caracteres' ver={verPassReg} setVer={setVerPassReg} />
+                    <CampoPassword value={password} onChange={e => setPassword(e.target.value)} placeholder='Mínimo 6 caracteres' ver={verPassReg} setVer={setVerPassReg} />
                   </div>
                   <button onClick={handleRegistro} disabled={cargando}
                     style={{ width:'100%', padding:'11px', borderRadius:'8px', border:'none', background: cargando ? '#9FE1CB' : '#1D9E75', color:'white', fontSize:'15px', fontWeight:'500', cursor:'pointer' }}>
