@@ -3,6 +3,29 @@
 import { useState } from 'react'
 import { supabase } from '../supabase'
 
+const campo = { width:'100%', padding:'10px 12px', borderRadius:'8px', border:'1px solid #ddd', fontSize:'14px', boxSizing:'border-box' }
+
+function CampoPassword({ value, onChange, placeholder, ver, setVer }) {
+  return (
+    <div style={{ position:'relative' }}>
+      <input
+        type={ver ? 'text' : 'password'}
+        placeholder={placeholder}
+        value={value}
+        onChange={onChange}
+        style={{ ...campo, paddingRight:'44px' }}
+      />
+      <button
+        type='button'
+        onMouseDown={e => e.preventDefault()}
+        onClick={() => setVer(v => !v)}
+        style={{ position:'absolute', right:'10px', top:'50%', transform:'translateY(-50%)', background:'none', border:'none', cursor:'pointer', padding:'4px', color:'#999', fontSize:'18px', lineHeight:1, display:'flex', alignItems:'center' }}>
+        👁
+      </button>
+    </div>
+  )
+}
+
 export default function Login() {
   const [tab, setTab] = useState('login')
   const [emailONickname, setEmailONickname] = useState('')
@@ -50,8 +73,13 @@ export default function Login() {
     if (!email.trim()) { setError('El correo es obligatorio.'); setCargando(false); return }
     if (password.length < 6) { setError('La contraseña debe tener mínimo 6 caracteres.'); setCargando(false); return }
 
-    const { data: nickExiste } = await supabase.from('usuarios').select('id').eq('nickname', nickname.trim()).single()
-    if (nickExiste) { setError('Ese nickname ya está en uso. Elige otro.'); setCargando(false); return }
+    // Verificar nickname único
+    const { data: nickExiste } = await supabase.from('usuarios').select('id').eq('nickname', nickname.trim()).maybeSingle()
+    if (nickExiste) { setError('El nickname "' + nickname.trim() + '" no está disponible. Elige otro.'); setCargando(false); return }
+
+    // Verificar celular único
+    const { data: celularExiste } = await supabase.from('usuarios').select('id').eq('celular', celular.trim()).maybeSingle()
+    if (celularExiste) { setError('El número de celular +51 ' + celular.trim() + ' ya está registrado.'); setCargando(false); return }
 
     const { data, error: errAuth } = await supabase.auth.signUp({
       email, password,
@@ -87,29 +115,6 @@ export default function Login() {
       setRecuperacionEnviada(true)
     }
     setCargando(false)
-  }
-
-  const campo = { width:'100%', padding:'10px 12px', borderRadius:'8px', border:'1px solid #ddd', fontSize:'14px', boxSizing:'border-box' }
-
-  function CampoPassword({ value, onChange, placeholder, ver, setVer }) {
-    return (
-      <div style={{ position:'relative' }}>
-        <input
-          type={ver ? 'text' : 'password'}
-          placeholder={placeholder}
-          value={value}
-          onChange={onChange}
-          style={{ ...campo, paddingRight:'40px' }}
-        />
-        <button
-          type='button'
-          onMouseDown={e => e.preventDefault()}
-          onClick={() => setVer(!ver)}
-          style={{ position:'absolute', right:'10px', top:'50%', transform:'translateY(-50%)', background:'none', border:'none', cursor:'pointer', padding:'4px', color:'#999', fontSize:'18px', lineHeight:1 }}>
-          👁
-        </button>
-      </div>
-    )
   }
 
   return (
