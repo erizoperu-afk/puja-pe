@@ -14,6 +14,8 @@ export default function Footer() {
             <div style={{ display:'flex', flexDirection:'column', gap:'8px' }}>
               <a href='/acerca' style={{ fontSize:'13px', color:'#666', textDecoration:'none' }}>Acerca de</a>
               <a href='/ayuda' style={{ fontSize:'13px', color:'#666', textDecoration:'none' }}>Centro de ayuda</a>
+              <a href='/guia-comprador' style={{ fontSize:'13px', color:'#666', textDecoration:'none' }}>Guia del comprador</a>
+              <a href='/guia-vendedor' style={{ fontSize:'13px', color:'#666', textDecoration:'none' }}>Guia del vendedor</a>
               <a href='/contacto' style={{ fontSize:'13px', color:'#666', textDecoration:'none' }}>Contacto</a>
             </div>
           </div>
