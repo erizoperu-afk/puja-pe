@@ -13,6 +13,7 @@ export default function PujaBox({ remate }) {
   const [cargando, setCargando] = useState(false)
   const [segundos, setSegundos] = useState(0)
   const [mostrarOferta, setMostrarOferta] = useState(false)
+  const [esVendedor, setEsVendedor] = useState(false)
 
   const esPrecioFijo = remate.tipo_publicacion === 'precio_fijo'
   const vencido = segundos === 0 && !esPrecioFijo
@@ -29,7 +30,15 @@ export default function PujaBox({ remate }) {
   }, [remate.fecha_fin])
 
   useEffect(() => {
-    if (!esPrecioFijo) cargarPujas()
+    async function init() {
+      // Verificar si el usuario actual es el vendedor
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session && session.user.id === remate.vendedor_id) {
+        setEsVendedor(true)
+      }
+      if (!esPrecioFijo) cargarPujas()
+    }
+    init()
 
     const canal = supabase
       .channel('pujas-' + remate.id)
@@ -77,6 +86,7 @@ export default function PujaBox({ remate }) {
     setMensaje('')
     const { data: { session } } = await supabase.auth.getSession()
     if (!session) { setError('Debes ingresar para pujar.'); setCargando(false); return }
+    if (session.user.id === remate.vendedor_id) { setError('No puedes pujar en tu propio remate.'); setCargando(false); return }
     const monto = Number(miPuja)
     const minimo = precio + Number(remate.incremento_minimo)
     if (monto < minimo) { setError('Tu puja debe ser mayor a S/ ' + minimo); setCargando(false); return }
@@ -96,6 +106,7 @@ export default function PujaBox({ remate }) {
     setError('')
     const { data: { session } } = await supabase.auth.getSession()
     if (!session) { setError('Debes ingresar para comprar.'); setCargando(false); return }
+    if (session.user.id === remate.vendedor_id) { setError('No puedes comprar tu propio artículo.'); setCargando(false); return }
     const { error: err } = await supabase.from('remates')
       .update({ activo: false, comprador_id: session.user.id })
       .eq('id', remate.id)
@@ -110,6 +121,7 @@ export default function PujaBox({ remate }) {
     setMensaje('')
     const { data: { session } } = await supabase.auth.getSession()
     if (!session) { setError('Debes ingresar para enviar una oferta.'); setCargando(false); return }
+    if (session.user.id === remate.vendedor_id) { setError('No puedes hacer una oferta en tu propio artículo.'); setCargando(false); return }
     const monto = Number(miOferta)
     if (monto <= 0) { setError('Ingresa un monto válido.'); setCargando(false); return }
     if (monto >= precio) { setError('Tu oferta debe ser menor al precio fijo de S/ ' + precio.toLocaleString()); setCargando(false); return }
@@ -193,8 +205,15 @@ export default function PujaBox({ remate }) {
         {error && <div style={{ background:'#FCEBEB', color:'#A32D2D', padding:'8px 12px', borderRadius:'8px', fontSize:'13px', marginBottom:'12px' }}>{error}</div>}
         {mensaje && <div style={{ background:'#E1F5EE', color:'#085041', padding:'8px 12px', borderRadius:'8px', fontSize:'13px', marginBottom:'12px' }}>{mensaje}</div>}
 
+        {/* MENSAJE SI ES EL VENDEDOR */}
+        {esVendedor && (
+          <div style={{ background:'#f9f9f9', color:'#999', padding:'12px', borderRadius:'8px', fontSize:'13px', textAlign:'center' }}>
+            Esta es tu publicación. No puedes pujar ni comprar tu propio artículo.
+          </div>
+        )}
+
         {/* ACCIONES SUBASTA */}
-        {!esPrecioFijo && (
+        {!esPrecioFijo && !esVendedor && (
           <>
             {vencido ? (
               <div style={{ background:'#f5f5f5', color:'#999', padding:'12px', borderRadius:'8px', fontSize:'13px', textAlign:'center' }}>
@@ -221,7 +240,7 @@ export default function PujaBox({ remate }) {
         )}
 
         {/* ACCIONES PRECIO FIJO */}
-        {esPrecioFijo && (
+        {esPrecioFijo && !esVendedor && (
           <>
             <button onClick={comprarDirecto} disabled={cargando}
               style={{ width:'100%', padding:'11px', borderRadius:'8px', border:'none', background: cargando ? '#9FE1CB' : '#1D9E75', color:'white', fontSize:'15px', fontWeight:'500', cursor:'pointer', marginBottom:'8px' }}>
