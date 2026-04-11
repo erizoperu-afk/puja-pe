@@ -59,7 +59,6 @@ export default function Login() {
     if (error) {
       setError('Correo/nickname o contraseña incorrectos.')
     } else {
-      // Verificar si el celular está verificado
       const { data: perfil } = await supabase
         .from('usuarios')
         .select('celular_verificado')
@@ -118,17 +117,12 @@ export default function Login() {
       setUserId(data.user.id)
     }
 
-    const res = await fetch('/api/verificar-celular/enviar', {
+    // Intentar enviar SMS — si falla igual mostrar pantalla de verificación
+    await fetch('/api/verificar-celular/enviar', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ celular: celular.trim() })
     })
-
-    if (!res.ok) {
-      setError('Cuenta creada pero no pudimos enviar el SMS. Intenta más tarde.')
-      setCargando(false)
-      return
-    }
 
     setPaso('verificando')
     setCargando(false)
@@ -236,6 +230,7 @@ export default function Login() {
                 <div style={{ width:'56px', height:'56px', borderRadius:'50%', background:'#E1F5EE', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 16px', fontSize:'24px' }}>📱</div>
                 <h2 style={{ fontSize:'18px', fontWeight:'500', marginBottom:'8px' }}>Verifica tu celular</h2>
                 <p style={{ fontSize:'14px', color:'#666' }}>Te enviamos un código SMS al número <strong>+51 {celular}</strong></p>
+                <p style={{ fontSize:'12px', color:'#999', marginTop:'6px' }}>Si no recibiste el código, puedes reenviarlo o intentar más tarde.</p>
               </div>
               {error && <div style={{ background: error.includes('✅') ? '#E1F5EE' : '#FCEBEB', color: error.includes('✅') ? '#085041' : '#A32D2D', padding:'10px 14px', borderRadius:'8px', fontSize:'13px', marginBottom:'14px' }}>{error}</div>}
               <div style={{ marginBottom:'16px' }}>
@@ -270,7 +265,7 @@ export default function Login() {
               </div>
               <div style={{ marginBottom:'20px', textAlign:'left' }}>
                 <label style={{ fontSize:'12px', color:'#666', display:'block', marginBottom:'5px' }}>Contraseña</label>
-                <input type="password" value={password} onChange={e => setPassword(e.target.value)} style={campo} />
+                <CampoPassword value={password} onChange={e => setPassword(e.target.value)} placeholder='Tu contraseña' ver={verPass} setVer={setVerPass} />
               </div>
               {error && <div style={{ background:'#FCEBEB', color:'#A32D2D', padding:'10px 14px', borderRadius:'8px', fontSize:'13px', marginBottom:'14px' }}>{error}</div>}
               <button onClick={handleLogin} disabled={cargando}
