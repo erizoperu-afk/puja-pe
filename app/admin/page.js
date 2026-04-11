@@ -27,6 +27,7 @@ export default function PanelAdmin() {
   const [sessionUser, setSessionUser] = useState(null)
   const [respuesta, setRespuesta] = useState({})
   const [respondiendo, setRespondiendo] = useState(null)
+  const [pendientesVerificacion, setPendientesVerificacion] = useState([])
 
   useEffect(() => { verificarAdmin() }, [])
 
@@ -67,6 +68,11 @@ export default function PanelAdmin() {
       rematesActivos: rematesData?.filter(r => r.activo).length || 0,
       totalPujas: pujasData?.length || 0,
     })
+
+    // Cargar usuarios pendientes de verificación
+    const pendientes = (usuariosData || []).filter(u => !u.celular_verificado)
+    setPendientesVerificacion(pendientes)
+
     setCargando(false)
   }
 
@@ -123,6 +129,20 @@ export default function PanelAdmin() {
   async function activarRemate(remateId) {
     await supabase.from('remates').update({ activo: true }).eq('id', remateId)
     cargarDatos()
+  }
+
+  async function aprobarVerificacion(usuarioId, nickname) {
+    if (!confirm(`¿Aprobar manualmente la verificación de ${nickname}?`)) return
+    const { error } = await supabase
+      .from('usuarios')
+      .update({ celular_verificado: true })
+      .eq('id', usuarioId)
+    if (error) {
+      alert('Error: ' + error.message)
+    } else {
+      alert(`✅ Usuario ${nickname} verificado correctamente.`)
+      cargarDatos()
+    }
   }
 
   function guardarPaquete(id) {
@@ -232,6 +252,12 @@ export default function PanelAdmin() {
                 {mensajesPendientes}
               </span>}
           </button>
+          <button style={estilo.tab(tab === 'verificaciones')} onClick={() => setTab('verificaciones')}>
+            Verificaciones {pendientesVerificacion.length > 0 &&
+              <span style={{ background:'#F59E0B', color:'white', borderRadius:'50%', padding:'1px 6px', fontSize:'11px', marginLeft:'4px' }}>
+                {pendientesVerificacion.length}
+              </span>}
+          </button>
           <button style={estilo.tab(tab === 'beta')} onClick={() => setTab('beta')}>Modo BETA</button>
           <button style={estilo.tab(tab === 'paquetes')} onClick={() => setTab('paquetes')}>Paquetes</button>
         </div>
@@ -247,7 +273,14 @@ export default function PanelAdmin() {
                     {u.nickname?.charAt(0).toUpperCase()}
                   </div>
                   <div style={{ flex:1 }}>
-                    <p style={{ fontWeight:'500', fontSize:'14px', marginBottom:'2px' }}>{u.nickname}</p>
+                    <p style={{ fontWeight:'500', fontSize:'14px', marginBottom:'2px' }}>
+                      {u.nickname}
+                      {!u.celular_verificado && (
+                        <span style={{ fontSize:'10px', background:'#FFF8E1', color:'#7B5800', border:'1px solid #FFE082', padding:'2px 6px', borderRadius:'10px', marginLeft:'8px' }}>
+                          ⚠️ Sin verificar
+                        </span>
+                      )}
+                    </p>
                     <div style={{ display:'flex', gap:'12px' }}>
                       <button onClick={() => verDetalleUsuario(u, 'pujas')}
                         style={{ fontSize:'11px', color:'#1D9E75', background:'none', border:'none', cursor:'pointer', padding:0 }}>
@@ -275,6 +308,39 @@ export default function PanelAdmin() {
                       Suspender
                     </button>
                   </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* VERIFICACIONES */}
+        {tab === 'verificaciones' && (
+          <div>
+            <p style={{ fontSize:'13px', color:'#999', marginBottom:'16px' }}>
+              Usuarios que se registraron pero no completaron la verificación por SMS. Puedes aprobarlos manualmente.
+            </p>
+            {pendientesVerificacion.length === 0 && (
+              <div style={{ textAlign:'center', padding:'40px', color:'#999' }}>
+                ✅ No hay usuarios pendientes de verificación.
+              </div>
+            )}
+            {pendientesVerificacion.map(u => (
+              <div key={u.id} style={{ ...estilo.card, border:'1px solid #FFE082', background:'#FFFDF0' }}>
+                <div style={{ display:'flex', alignItems:'center', gap:'12px' }}>
+                  <div style={{ width:'40px', height:'40px', borderRadius:'50%', background:'#FFF8E1', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'14px', fontWeight:'500', color:'#7B5800', flexShrink:0 }}>
+                    {u.nickname?.charAt(0).toUpperCase()}
+                  </div>
+                  <div style={{ flex:1 }}>
+                    <p style={{ fontWeight:'500', fontSize:'14px', marginBottom:'2px' }}>{u.nickname}</p>
+                    <p style={{ fontSize:'12px', color:'#999' }}>
+                      Celular: +51 {u.celular} · Registrado: {new Date(u.created_at).toLocaleDateString('es-PE')}
+                    </p>
+                  </div>
+                  <button onClick={() => aprobarVerificacion(u.id, u.nickname)}
+                    style={{ padding:'8px 16px', background:'#1D9E75', color:'white', border:'none', borderRadius:'8px', fontSize:'13px', cursor:'pointer', fontWeight:'500' }}>
+                    ✅ Aprobar manualmente
+                  </button>
                 </div>
               </div>
             ))}
