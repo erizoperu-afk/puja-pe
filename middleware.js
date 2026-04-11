@@ -1,34 +1,31 @@
-import { createServerClient } from '@supabase/auth-helpers-nextjs'
 import { NextResponse } from 'next/server'
 
 export async function middleware(req) {
-  const res = NextResponse.next()
-
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    { cookies: { get: (name) => req.cookies.get(name)?.value } }
-  )
-
-  const { data: { session } } = await supabase.auth.getSession()
-
-  if (!session) return res
-
   const url = req.nextUrl.pathname
+
+  // Rutas libres
   const rutasLibres = ['/login', '/api', '/verificar-celular-pendiente', '/_next', '/favicon']
-  if (rutasLibres.some(r => url.startsWith(r))) return res
+  if (rutasLibres.some(r => url.startsWith(r))) return NextResponse.next()
 
-  const { data: usuario } = await supabase
-    .from('usuarios')
-    .select('celular_verificado')
-    .eq('id', session.user.id)
-    .single()
+  // Verificar cookie de sesión de Supabase
+  const token = req.cookies.get('sb-access-token')?.value || 
+                req.cookies.get('sb-jytrnevfpdvxpaherzub-auth-token')?.value
 
-  if (usuario && !usuario.celular_verificado) {
-    return NextResponse.redirect(new URL('/verificar-celular-pendiente', req.url))
+  if (!token) return NextResponse.next()
+
+  // Verificar celular en Supabase via API
+  const res = await fetch(`${req.nextUrl.origin}/api/verificar-sesion`, {
+    headers: { 'Cookie': req.headers.get('cookie') || '' }
+  })
+
+  if (res.ok) {
+    const data = await res.json()
+    if (data.redirigir) {
+      return NextResponse.redirect(new URL('/verificar-celular-pendiente', req.url))
+    }
   }
 
-  return res
+  return NextResponse.next()
 }
 
 export const config = {
