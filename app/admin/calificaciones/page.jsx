@@ -1,10 +1,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { supabase } from '../../supabase'
 
 export default function AdminCalificacionesPage() {
-  const supabase = createClientComponentClient()
   const [ratings, setRatings] = useState([])
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState(null)
