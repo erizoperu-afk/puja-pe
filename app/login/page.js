@@ -88,7 +88,15 @@ export default function Login() {
       email, password,
       options: { data: { nombre, apellido, nickname, celular } }
     })
-    if (errAuth) { setError('Error al crear cuenta: ' + errAuth.message); setCargando(false); return }
+   if (errAuth) {
+  if (errAuth.message.includes('already registered')) {
+    setError('Este correo ya tiene una cuenta registrada. Ingresa con tu correo y contraseña.')
+  } else {
+    setError('Error al crear cuenta. Intenta de nuevo.')
+  }
+  setCargando(false)
+  return
+}
 
     if (data?.user) {
       await supabase.from('usuarios').upsert({
