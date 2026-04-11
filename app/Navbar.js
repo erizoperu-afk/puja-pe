@@ -34,69 +34,20 @@ export default function Navbar() {
   const [usuario, setUsuario] = useState(null)
   const [esAdmin, setEsAdmin] = useState(false)
   const [menuAbierto, setMenuAbierto] = useState(false)
-  const [celularVerificado, setCelularVerificado] = useState(true)
-  const [mostrarVerificacion, setMostrarVerificacion] = useState(false)
-  const [codigo, setCodigo] = useState('')
-  const [enviando, setEnviando] = useState(false)
-  const [mensajeVerif, setMensajeVerif] = useState('')
-  const [celular, setCelular] = useState('')
 
   useEffect(() => {
-    async function cargarUsuario(session) {
+    supabase.auth.getSession().then(({ data: { session } }) => {
       setUsuario(session?.user ?? null)
       setEsAdmin(session?.user?.email === ADMIN_EMAIL)
-      if (session?.user) {
-        const { data } = await supabase
-          .from('usuarios')
-          .select('celular_verificado, celular')
-          .eq('id', session.user.id)
-          .single()
-        if (data) {
-          setCelularVerificado(data.celular_verificado)
-          setCelular(data.celular)
-        }
+    })
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        setUsuario(session?.user ?? null)
+        setEsAdmin(session?.user?.email === ADMIN_EMAIL)
       }
-    }
-
-    supabase.auth.getSession().then(({ data: { session } }) => cargarUsuario(session))
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => cargarUsuario(session))
+    )
     return () => subscription.unsubscribe()
   }, [])
-
-  async function enviarCodigo() {
-    setEnviando(true)
-    setMensajeVerif('')
-    const res = await fetch('/api/verificar-celular/enviar', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ celular })
-    })
-    if (res.ok) {
-      setMostrarVerificacion(true)
-      setMensajeVerif('Código enviado ✅')
-    } else {
-      setMensajeVerif('Error al enviar el SMS. Intenta de nuevo.')
-    }
-    setEnviando(false)
-  }
-
-  async function confirmarCodigo() {
-    setEnviando(true)
-    setMensajeVerif('')
-    const res = await fetch('/api/verificar-celular/confirmar', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ celular, codigo })
-    })
-    if (res.ok) {
-      await supabase.from('usuarios').update({ celular_verificado: true }).eq('id', usuario.id)
-      setCelularVerificado(true)
-      setMensajeVerif('¡Celular verificado! ✅')
-    } else {
-      setMensajeVerif('Código incorrecto o expirado.')
-    }
-    setEnviando(false)
-  }
 
   async function cerrarSesion() {
     await supabase.auth.signOut()
@@ -156,45 +107,6 @@ export default function Navbar() {
               <button onClick={cerrarSesion} style={{ ...linkStyle, background:'none', border:'none', cursor:'pointer', width:'100%', textAlign:'left', color:'#A32D2D' }}>Cerrar sesion</button>
             </>
           )}
-        </div>
-      )}
-
-      {/* BANNER: CELULAR NO VERIFICADO */}
-      {usuario && !celularVerificado && (
-        <div style={{ background:'#FFF8E1', borderBottom:'1px solid #FFE082', padding:'12px 24px' }}>
-          <div style={{ maxWidth:'600px', margin:'0 auto' }}>
-            {!mostrarVerificacion ? (
-              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:'10px' }}>
-                <p style={{ fontSize:'13px', color:'#7B5800', margin:0 }}>
-                  📱 Tu número de celular <strong>+51 {celular}</strong> aún no está verificado.
-                </p>
-                <button onClick={enviarCodigo} disabled={enviando}
-                  style={{ padding:'6px 14px', borderRadius:'8px', border:'none', background:'#F59E0B', color:'white', fontSize:'13px', fontWeight:'500', cursor:'pointer' }}>
-                  {enviando ? 'Enviando...' : 'Verificar ahora'}
-                </button>
-              </div>
-            ) : (
-              <div style={{ display:'flex', alignItems:'center', gap:'10px', flexWrap:'wrap' }}>
-                <p style={{ fontSize:'13px', color:'#7B5800', margin:0 }}>Ingresa el código que llegó a tu celular:</p>
-                <input
-                  type='text'
-                  value={codigo}
-                  onChange={e => setCodigo(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                  maxLength={6}
-                  placeholder='000000'
-                  style={{ width:'100px', padding:'6px 10px', borderRadius:'8px', border:'1px solid #ddd', fontSize:'16px', textAlign:'center', letterSpacing:'4px' }}
-                />
-                <button onClick={confirmarCodigo} disabled={enviando}
-                  style={{ padding:'6px 14px', borderRadius:'8px', border:'none', background:'#1D9E75', color:'white', fontSize:'13px', fontWeight:'500', cursor:'pointer' }}>
-                  {enviando ? 'Verificando...' : 'Confirmar'}
-                </button>
-                {mensajeVerif && <span style={{ fontSize:'13px', color: mensajeVerif.includes('✅') ? '#085041' : '#A32D2D' }}>{mensajeVerif}</span>}
-              </div>
-            )}
-            {mensajeVerif && !mostrarVerificacion && (
-              <p style={{ fontSize:'12px', color: mensajeVerif.includes('✅') ? '#085041' : '#A32D2D', margin:'6px 0 0' }}>{mensajeVerif}</p>
-            )}
-          </div>
         </div>
       )}
 
