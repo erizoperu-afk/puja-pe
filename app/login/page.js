@@ -44,6 +44,11 @@ export default function Login() {
   const [verPass, setVerPass] = useState(false)
   const [verPassReg, setVerPassReg] = useState(false)
 
+  // Verificación SMS
+  const [paso, setPaso] = useState('formulario') // 'formulario' | 'verificando' | 'completado'
+  const [codigo, setCodigo] = useState('')
+  const [userId, setUserId] = useState(null)
+
   async function handleLogin() {
     setCargando(true)
     setError('')
@@ -74,7 +79,7 @@ export default function Login() {
     if (password.length < 6) { setError('La contraseña debe tener mínimo 6 caracteres.'); setCargando(false); return }
 
     const { data: nickExiste } = await supabase.from('usuarios').select('id').eq('nickname', nickname.trim()).maybeSingle()
-    if (nickExiste) { setError('El nickname "' + nickname.trim() + '" no está disponible. Elige otro.'); setCargando(false); return }
+    if (nickExiste) { setError('El nickname "' + nickname.trim() + '" no está disponible.'); setCargando(false); return }
 
     const { data: celularExiste } = await supabase.from('usuarios').select('id').eq('celular', celular.trim()).maybeSingle()
     if (celularExiste) { setError('El número +51 ' + celular.trim() + ' ya está registrado.'); setCargando(false); return }
@@ -91,13 +96,70 @@ export default function Login() {
         nickname: nickname.trim(),
         nombre: nombre.trim(),
         apellido: apellido.trim(),
-        celular: celular.trim()
+        celular: celular.trim(),
+        celular_verificado: false
       })
+      setUserId(data.user.id)
     }
 
+    // Enviar SMS de verificación
+    const res = await fetch('/api/verificar-celular/enviar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ celular: celular.trim() })
+    })
+
+    if (!res.ok) {
+      setError('Cuenta creada pero no pudimos enviar el SMS. Intenta más tarde.')
+      setCargando(false)
+      return
+    }
+
+    setPaso('verificando')
+    setCargando(false)
+  }
+
+  async function handleVerificarCodigo() {
+    setCargando(true)
+    setError('')
+
+    if (!codigo.trim() || codigo.length < 4) {
+      setError('Ingresa el código que recibiste por SMS.')
+      setCargando(false)
+      return
+    }
+
+    const res = await fetch('/api/verificar-celular/confirmar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ celular: celular.trim(), codigo: codigo.trim() })
+    })
+
+    if (!res.ok) {
+      setError('Código incorrecto o expirado. Intenta de nuevo.')
+      setCargando(false)
+      return
+    }
+
+    // Marcar celular como verificado en Supabase
+    if (userId) {
+      await supabase.from('usuarios').update({ celular_verificado: true }).eq('id', userId)
+    }
+
+    setPaso('completado')
     setEmailONickname(email)
-    setCuentaCreada(true)
-    setPassword('')
+    setCargando(false)
+  }
+
+  async function reenviarCodigo() {
+    setCargando(true)
+    setError('')
+    await fetch('/api/verificar-celular/enviar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ celular: celular.trim() })
+    })
+    setError('Código reenviado ✅')
     setCargando(false)
   }
 
@@ -106,7 +168,7 @@ export default function Login() {
     setError('')
     if (!emailRecuperacion.trim()) { setError('Ingresa tu correo electrónico.'); setCargando(false); return }
     const { error } = await supabase.auth.resetPasswordForEmail(emailRecuperacion, {
-    redirectTo: 'https://puja.pe/reset-password'
+      redirectTo: 'https://puja.pe/reset-password'
     })
     if (error) {
       setError('Error al enviar el correo. Verifica que el email sea correcto.')
@@ -155,16 +217,45 @@ export default function Login() {
               </div>
             )
 
-          /* CUENTA CREADA */
-          ) : cuentaCreada ? (
+          /* PASO: VERIFICAR CÓDIGO SMS */
+          ) : paso === 'verificando' ? (
+            <div>
+              <div style={{ textAlign:'center', marginBottom:'20px' }}>
+                <div style={{ width:'56px', height:'56px', borderRadius:'50%', background:'#E1F5EE', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 16px', fontSize:'24px' }}>📱</div>
+                <h2 style={{ fontSize:'18px', fontWeight:'500', marginBottom:'8px' }}>Verifica tu celular</h2>
+                <p style={{ fontSize:'14px', color:'#666' }}>Te enviamos un código SMS al número <strong>+51 {celular}</strong></p>
+              </div>
+              {error && <div style={{ background: error.includes('✅') ? '#E1F5EE' : '#FCEBEB', color: error.includes('✅') ? '#085041' : '#A32D2D', padding:'10px 14px', borderRadius:'8px', fontSize:'13px', marginBottom:'14px' }}>{error}</div>}
+              <div style={{ marginBottom:'16px' }}>
+                <label style={{ fontSize:'12px', color:'#666', display:'block', marginBottom:'5px' }}>Código de verificación</label>
+                <input
+                  type='text'
+                  placeholder='Ej: 482931'
+                  value={codigo}
+                  onChange={e => setCodigo(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  maxLength={6}
+                  style={{ ...campo, textAlign:'center', fontSize:'24px', letterSpacing:'8px', fontWeight:'500' }}
+                />
+              </div>
+              <button onClick={handleVerificarCodigo} disabled={cargando}
+                style={{ width:'100%', padding:'11px', borderRadius:'8px', border:'none', background: cargando ? '#9FE1CB' : '#1D9E75', color:'white', fontSize:'15px', fontWeight:'500', cursor:'pointer', marginBottom:'12px' }}>
+                {cargando ? 'Verificando...' : 'Confirmar código'}
+              </button>
+              <p style={{ textAlign:'center', fontSize:'12px', color:'#999' }}>
+                ¿No recibiste el código?{' '}
+                <span onClick={reenviarCodigo} style={{ color:'#1D9E75', cursor:'pointer' }}>Reenviar</span>
+              </p>
+            </div>
+
+          /* PASO: COMPLETADO */
+          ) : paso === 'completado' ? (
             <div style={{ textAlign:'center' }}>
               <div style={{ width:'56px', height:'56px', borderRadius:'50%', background:'#E1F5EE', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 16px', fontSize:'24px' }}>✓</div>
               <h2 style={{ fontSize:'18px', fontWeight:'500', marginBottom:'8px' }}>¡Cuenta creada!</h2>
-              <p style={{ fontSize:'14px', color:'#666', marginBottom:'24px' }}>Ahora ingresa con tu correo o nickname y contraseña para empezar.</p>
+              <p style={{ fontSize:'14px', color:'#666', marginBottom:'24px' }}>Tu celular fue verificado. Ahora ingresa para empezar.</p>
               <div style={{ marginBottom:'14px', textAlign:'left' }}>
                 <label style={{ fontSize:'12px', color:'#666', display:'block', marginBottom:'5px' }}>Correo electrónico o nickname</label>
-                <input type="text" placeholder="tu@correo.com o tu_nickname" value={emailONickname}
-                  onChange={e => setEmailONickname(e.target.value)} style={campo} />
+                <input type="text" value={emailONickname} onChange={e => setEmailONickname(e.target.value)} style={campo} />
               </div>
               <div style={{ marginBottom:'20px', textAlign:'left' }}>
                 <label style={{ fontSize:'12px', color:'#666', display:'block', marginBottom:'5px' }}>Contraseña</label>
@@ -241,7 +332,7 @@ export default function Login() {
                         onChange={e => setCelular(e.target.value.replace(/\D/g,''))}
                         maxLength={9} style={{ ...campo, flex:1 }} />
                     </div>
-                    <p style={{ fontSize:'11px', color:'#999', marginTop:'4px' }}>Para contacto en transacciones.</p>
+                    <p style={{ fontSize:'11px', color:'#999', marginTop:'4px' }}>Te enviaremos un código SMS para verificar.</p>
                   </div>
                   <div style={{ marginBottom:'14px' }}>
                     <label style={{ fontSize:'12px', color:'#666', display:'block', marginBottom:'5px' }}>Correo electrónico *</label>
