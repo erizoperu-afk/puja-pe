@@ -1,9 +1,10 @@
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
+import { supabase } from '../../supabase'
 import { cookies } from 'next/headers'
 
-export async function GET() {
+export async function GET(request) {
   try {
-    const supabase = createRouteHandlerClient({ cookies })
+    const authHeader = request.headers.get('cookie') || ''
+    
     const { data: { session } } = await supabase.auth.getSession()
 
     if (!session) return Response.json({ redirigir: false })
