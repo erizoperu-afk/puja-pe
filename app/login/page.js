@@ -37,15 +37,12 @@ export default function Login() {
   const [celular, setCelular] = useState('')
   const [error, setError] = useState('')
   const [cargando, setCargando] = useState(false)
-  const [cuentaCreada, setCuentaCreada] = useState(false)
   const [recuperando, setRecuperando] = useState(false)
   const [emailRecuperacion, setEmailRecuperacion] = useState('')
   const [recuperacionEnviada, setRecuperacionEnviada] = useState(false)
   const [verPass, setVerPass] = useState(false)
   const [verPassReg, setVerPassReg] = useState(false)
-
-  // Verificación SMS
-  const [paso, setPaso] = useState('formulario') // 'formulario' | 'verificando' | 'completado'
+  const [paso, setPaso] = useState('formulario')
   const [codigo, setCodigo] = useState('')
   const [userId, setUserId] = useState(null)
 
@@ -58,11 +55,22 @@ export default function Login() {
       if (err || !data) { setError('Nickname no encontrado.'); setCargando(false); return }
       emailFinal = data
     }
-    const { error } = await supabase.auth.signInWithPassword({ email: emailFinal, password })
+    const { data, error } = await supabase.auth.signInWithPassword({ email: emailFinal, password })
     if (error) {
       setError('Correo/nickname o contraseña incorrectos.')
     } else {
-      window.location.href = '/'
+      // Verificar si el celular está verificado
+      const { data: perfil } = await supabase
+        .from('usuarios')
+        .select('celular_verificado')
+        .eq('id', data.user.id)
+        .single()
+
+      if (perfil && !perfil.celular_verificado) {
+        window.location.href = '/verificar-celular-pendiente'
+      } else {
+        window.location.href = '/'
+      }
     }
     setCargando(false)
   }
@@ -88,15 +96,15 @@ export default function Login() {
       email, password,
       options: { data: { nombre, apellido, nickname, celular } }
     })
-   if (errAuth) {
-  if (errAuth.message.includes('already registered')) {
-    setError('Este correo ya tiene una cuenta registrada. Ingresa con tu correo y contraseña.')
-  } else {
-    setError('Error al crear cuenta. Intenta de nuevo.')
-  }
-  setCargando(false)
-  return
-}
+    if (errAuth) {
+      if (errAuth.message.includes('already registered')) {
+        setError('Este correo ya tiene una cuenta registrada. Ingresa con tu correo y contraseña.')
+      } else {
+        setError('Error al crear cuenta. Intenta de nuevo.')
+      }
+      setCargando(false)
+      return
+    }
 
     if (data?.user) {
       await supabase.from('usuarios').upsert({
@@ -110,7 +118,6 @@ export default function Login() {
       setUserId(data.user.id)
     }
 
-    // Enviar SMS de verificación
     const res = await fetch('/api/verificar-celular/enviar', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -149,7 +156,6 @@ export default function Login() {
       return
     }
 
-    // Marcar celular como verificado en Supabase
     if (userId) {
       await supabase.from('usuarios').update({ celular_verificado: true }).eq('id', userId)
     }
@@ -196,7 +202,6 @@ export default function Login() {
       <div style={{ display:'flex', alignItems:'center', justifyContent:'center', padding:'32px 16px' }}>
         <div style={{ background:'#fff', border:'1px solid #eee', borderRadius:'16px', padding:'28px', width:'100%', maxWidth:'400px' }}>
 
-          {/* RECUPERAR CONTRASEÑA */}
           {recuperando ? (
             recuperacionEnviada ? (
               <div style={{ textAlign:'center' }}>
@@ -225,7 +230,6 @@ export default function Login() {
               </div>
             )
 
-          /* PASO: VERIFICAR CÓDIGO SMS */
           ) : paso === 'verificando' ? (
             <div>
               <div style={{ textAlign:'center', marginBottom:'20px' }}>
@@ -255,7 +259,6 @@ export default function Login() {
               </p>
             </div>
 
-          /* PASO: COMPLETADO */
           ) : paso === 'completado' ? (
             <div style={{ textAlign:'center' }}>
               <div style={{ width:'56px', height:'56px', borderRadius:'50%', background:'#E1F5EE', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 16px', fontSize:'24px' }}>✓</div>
@@ -267,7 +270,7 @@ export default function Login() {
               </div>
               <div style={{ marginBottom:'20px', textAlign:'left' }}>
                 <label style={{ fontSize:'12px', color:'#666', display:'block', marginBottom:'5px' }}>Contraseña</label>
-                <CampoPassword value={password} onChange={e => setPassword(e.target.value)} placeholder='Tu contraseña' ver={verPass} setVer={setVerPass} />
+                <input type="password" value={password} onChange={e => setPassword(e.target.value)} style={campo} />
               </div>
               {error && <div style={{ background:'#FCEBEB', color:'#A32D2D', padding:'10px 14px', borderRadius:'8px', fontSize:'13px', marginBottom:'14px' }}>{error}</div>}
               <button onClick={handleLogin} disabled={cargando}
@@ -276,7 +279,6 @@ export default function Login() {
               </button>
             </div>
 
-          /* LOGIN / REGISTRO */
           ) : (
             <>
               <div style={{ display:'flex', borderBottom:'1px solid #eee', marginBottom:'24px' }}>
