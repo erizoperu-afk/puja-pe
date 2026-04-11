@@ -39,7 +39,6 @@ export default function PujaBox({ remate }) {
         setEsVendedor(true)
       }
       if (session && session.user.id !== remate.vendedor_id) {
-        // Verificar si ya tiene un autobid activo
         const { data: bid } = await supabase
           .from('autobids')
           .select('*')
@@ -83,13 +82,42 @@ export default function PujaBox({ remate }) {
       const pujasConNombre = await Promise.all(data.map(async (p) => {
         const { data: userData } = await supabase
           .from('usuarios')
-          .select('nickname')
+          .select('nickname, reputation_score')
           .eq('id', p.usuario_id)
           .single()
-        return { ...p, nickname: userData?.nickname || 'Anónimo' }
+        return { ...p, nickname: userData?.nickname || 'Anónimo', reputation_score: userData?.reputation_score ?? 0 }
       }))
       setPujas(pujasConNombre)
     }
+  }
+
+  async function verificarRestriccion(userId) {
+    const { data: restricciones } = await supabase
+      .from('seller_restrictions')
+      .select('*')
+      .eq('auction_id', remate.id)
+
+    if (!restricciones || restricciones.length === 0) return null
+
+    const { data: perfil } = await supabase
+      .from('usuarios')
+      .select('reputation_score')
+      .eq('id', userId)
+      .single()
+
+    const score = perfil?.reputation_score ?? 0
+
+    const minRep = restricciones.find(r => r.min_reputation !== null)
+    if (minRep && score < minRep.min_reputation) {
+      return `Necesitas una calificación mínima de +${minRep.min_reputation} para pujar. Tu calificación actual es ${score >= 0 ? '+' : ''}${score}.`
+    }
+
+    const bloqueado = restricciones.some(r => r.blocked_user_id === userId)
+    if (bloqueado) {
+      return 'El vendedor ha restringido tu participación en este remate.'
+    }
+
+    return null
   }
 
   async function hacerPuja() {
@@ -100,6 +128,10 @@ export default function PujaBox({ remate }) {
     const { data: { session } } = await supabase.auth.getSession()
     if (!session) { setError('Debes ingresar para pujar.'); setCargando(false); return }
     if (session.user.id === remate.vendedor_id) { setError('No puedes pujar en tu propio remate.'); setCargando(false); return }
+
+    const restriccion = await verificarRestriccion(session.user.id)
+    if (restriccion) { setError(restriccion); setCargando(false); return }
+
     const monto = Number(miPuja)
     const minimo = precio + Number(remate.incremento_minimo)
     if (monto < minimo) { setError('Tu puja debe ser mayor a S/ ' + minimo); setCargando(false); return }
@@ -108,7 +140,6 @@ export default function PujaBox({ remate }) {
       .insert({ remate_id: remate.id, usuario_id: session.user.id, monto })
     if (errPuja) { setError('Error al registrar puja: ' + errPuja.message); setCargando(false); return }
     await supabase.from('remates').update({ precio_actual: monto }).eq('id', remate.id)
-    // Procesar autobids de otros usuarios
     await supabase.rpc('procesar_autobid', { p_remate_id: remate.id, p_precio_actual: monto, p_ultimo_postor: session.user.id })
     setMiPuja('')
     setMensaje('¡Puja registrada! Vas ganando.')
@@ -124,11 +155,13 @@ export default function PujaBox({ remate }) {
     const { data: { session } } = await supabase.auth.getSession()
     if (!session) { setError('Debes ingresar para configurar una puja automática.'); setCargando(false); return }
     if (session.user.id === remate.vendedor_id) { setError('No puedes pujar en tu propio remate.'); setCargando(false); return }
+
+    const restriccion = await verificarRestriccion(session.user.id)
+    if (restriccion) { setError(restriccion); setCargando(false); return }
+
     const montoMax = Number(miAutobid)
     const minimo = precio + Number(remate.incremento_minimo)
     if (montoMax < minimo) { setError('Tu puja máxima debe ser mayor a S/ ' + minimo); setCargando(false); return }
-
-    // Guardar el autobid
     const { error: errBid } = await supabase.from('autobids').upsert({
       remate_id: remate.id,
       usuario_id: session.user.id,
@@ -136,12 +169,9 @@ export default function PujaBox({ remate }) {
       activo: true
     }, { onConflict: 'remate_id,usuario_id' })
     if (errBid) { setError('Error al configurar puja automática.'); setCargando(false); return }
-
-    // Hacer la primera puja automática
     const primeraP = Math.min(montoMax, precio + Number(remate.incremento_minimo))
     await supabase.from('pujas').insert({ remate_id: remate.id, usuario_id: session.user.id, monto: primeraP })
     await supabase.from('remates').update({ precio_actual: primeraP }).eq('id', remate.id)
-
     setAutobidActivo({ monto_maximo: montoMax })
     setModoAutobid(false)
     setMiAutobid('')
@@ -195,6 +225,11 @@ export default function PujaBox({ remate }) {
     setMostrarOferta(false)
     setMensaje('¡Oferta enviada! El vendedor la revisará pronto.')
     setCargando(false)
+  }
+
+  // Formato de puntaje: +5 o -3
+  function formatScore(score) {
+    return score >= 0 ? `+${score}` : `${score}`
   }
 
   const h = Math.floor(segundos / 3600)
@@ -254,7 +289,12 @@ export default function PujaBox({ remate }) {
             <p style={{ fontSize:'11px', color:'#999', marginBottom:'6px' }}>Ultimas pujas</p>
             {pujas.map((p, i) => (
               <div key={p.id} style={{ display:'flex', justifyContent:'space-between', fontSize:'12px', padding:'3px 0' }}>
-                <span style={{ color:'#666' }}>{p.nickname}</span>
+                <span style={{ color:'#666' }}>
+                  {p.nickname}
+                  <span style={{ marginLeft:'4px', color: p.reputation_score > 0 ? '#1D9E75' : p.reputation_score < 0 ? '#A32D2D' : '#999', fontSize:'11px' }}>
+                    ({formatScore(p.reputation_score)})
+                  </span>
+                </span>
                 <span style={{ fontWeight:'500', color: i === 0 ? '#1D9E75' : '#333' }}>S/ {Number(p.monto).toLocaleString()}</span>
               </div>
             ))}
@@ -280,7 +320,6 @@ export default function PujaBox({ remate }) {
               </div>
             ) : (
               <>
-                {/* AUTOBID ACTIVO */}
                 {autobidActivo && (
                   <div style={{ background:'#E1F5EE', border:'1px solid #9FE1CB', borderRadius:'8px', padding:'12px', marginBottom:'12px' }}>
                     <p style={{ fontSize:'13px', color:'#085041', fontWeight:'500', marginBottom:'4px' }}>🤖 Puja automática activa</p>
@@ -292,7 +331,6 @@ export default function PujaBox({ remate }) {
                   </div>
                 )}
 
-                {/* TABS PUJA NORMAL / AUTOBID */}
                 {!autobidActivo && (
                   <div style={{ display:'flex', gap:'6px', marginBottom:'12px' }}>
                     <button onClick={() => setModoAutobid(false)}
@@ -306,7 +344,6 @@ export default function PujaBox({ remate }) {
                   </div>
                 )}
 
-                {/* PUJA NORMAL */}
                 {!modoAutobid && !autobidActivo && (
                   <>
                     <p style={{ fontSize:'12px', color:'#666', marginBottom:'6px' }}>Tu puja — mínimo S/ {precio + Number(remate.incremento_minimo)}</p>
@@ -325,7 +362,6 @@ export default function PujaBox({ remate }) {
                   </>
                 )}
 
-                {/* PUJA AUTOMÁTICA */}
                 {modoAutobid && !autobidActivo && (
                   <>
                     <div style={{ background:'#f9f9f9', borderRadius:'8px', padding:'12px', marginBottom:'12px', fontSize:'12px', color:'#666', lineHeight:'1.6' }}>
