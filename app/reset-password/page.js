@@ -9,6 +9,17 @@ export default function ResetPassword() {
   const [cargando, setCargando] = useState(false)
   const [error, setError] = useState('')
   const [listo, setListo] = useState(false)
+  const [sesionLista, setSesionLista] = useState(false)
+
+  useEffect(() => {
+    // Supabase maneja el token del URL automáticamente
+    // Solo necesitamos esperar a que establezca la sesión
+    supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        setSesionLista(true)
+      }
+    })
+  }, [])
 
   async function handleReset() {
     setCargando(true)
@@ -29,7 +40,7 @@ export default function ResetPassword() {
     const { error } = await supabase.auth.updateUser({ password })
 
     if (error) {
-      setError('Error al cambiar la contraseña. El link puede haber expirado.')
+      setError('Error al cambiar la contraseña: ' + error.message)
     } else {
       setListo(true)
     }
@@ -43,9 +54,17 @@ export default function ResetPassword() {
         <div style={{ width:'56px', height:'56px', borderRadius:'50%', background:'#E1F5EE', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 16px', fontSize:'28px' }}>✅</div>
         <h2 style={{ fontSize:'18px', fontWeight:'500', marginBottom:'8px' }}>¡Contraseña actualizada!</h2>
         <p style={{ fontSize:'14px', color:'#666', marginBottom:'24px' }}>Ya puedes ingresar con tu nueva contraseña.</p>
-        <a href='/login' style={{ display:'block', padding:'11px', borderRadius:'8px', background:'#1D9E75', color:'white', textDecoration:'none', fontSize:'15px', fontWeight:'500' }}>
+        <a href='/login' style={{ display:'block', padding:'11px', borderRadius:'8px', background:'#1D9E75', color:'white', textDecoration:'none', fontSize:'15px', fontWeight:'500', textAlign:'center' }}>
           Ir al login
         </a>
+      </div>
+    </main>
+  )
+
+  if (!sesionLista) return (
+    <main style={{ fontFamily:'sans-serif', minHeight:'100vh', background:'#f9f9f9', display:'flex', alignItems:'center', justifyContent:'center' }}>
+      <div style={{ textAlign:'center', color:'#999' }}>
+        <p>Verificando enlace...</p>
       </div>
     </main>
   )
