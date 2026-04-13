@@ -17,7 +17,7 @@ export default async function PaginaRemate({ params }) {
     <div style={{ padding:'40px', fontFamily:'sans-serif' }}>Remate no encontrado.</div>
   )
 
-  const url = 'https://puja-polo-pe.vercel.app/remate/' + remate.id
+  const url = 'https://www.puja.pe/remate/' + remate.id
   const texto = '¡Mira este artículo en Puja.pe! ' + remate.titulo + ' — S/ ' + Number(remate.precio_actual).toLocaleString()
 
   return (
@@ -29,14 +29,21 @@ export default async function PaginaRemate({ params }) {
         </p>
 
         <div style={{ display:'grid', gridTemplateColumns:'1fr', gap:'16px' }} className='remate-grid'>
+
+          {/* GALERIA — visible arriba en mobile */}
+          <div className='galeria-col'>
+            <GaleriaFotos imagenes={remate.imagenes_url || (remate.imagen_url ? [remate.imagen_url] : [])} titulo={remate.titulo} />
+          </div>
+
+          {/* PUJABOX — título, precio, temporizador */}
           <div className='pujabox-col'>
             <PujaBox remate={remate} />
             <BotonFavorito remateId={remate.id} />
             <BotonCompartir url={url} texto={texto} titulo={remate.titulo} />
           </div>
 
-          <div className='contenido-col'>
-            <GaleriaFotos imagenes={remate.imagenes_url || (remate.imagen_url ? [remate.imagen_url] : [])} titulo={remate.titulo} />
+          {/* INFO — descripción y detalles */}
+          <div className='info-col'>
             <div style={{ background:'#fff', border:'1px solid #eee', borderRadius:'12px', padding:'20px', marginBottom:'16px' }}>
               <h2 style={{ fontSize:'15px', fontWeight:'500', marginBottom:'12px' }}>Descripcion</h2>
               <p style={{ fontSize:'14px', color:'#555', lineHeight:'1.7' }}>{remate.descripcion || 'Sin descripción.'}</p>
@@ -60,14 +67,28 @@ export default async function PaginaRemate({ params }) {
       </div>
 
       <style>{`
+        /* DESKTOP — 2 columnas: contenido izquierda, pujabox derecha */
         @media (min-width: 768px) {
-          .remate-grid { grid-template-columns: 1fr 340px !important; }
-          .pujabox-col { order: 2; }
-          .contenido-col { order: 1; }
+          .remate-grid {
+            grid-template-columns: 1fr 340px !important;
+            grid-template-areas:
+              'galeria pujabox'
+              'info pujabox' !important;
+          }
+          .galeria-col { grid-area: galeria; }
+          .pujabox-col { grid-area: pujabox; }
+          .info-col { grid-area: info; }
         }
+
+        /* MOBILE — 1 columna: foto, luego pujabox, luego info */
         @media (max-width: 767px) {
-          .pujabox-col { order: 1; }
-          .contenido-col { order: 2; }
+          .remate-grid {
+            display: flex !important;
+            flex-direction: column !important;
+          }
+          .galeria-col { order: 1; }
+          .pujabox-col { order: 2; }
+          .info-col { order: 3; }
         }
       `}</style>
     </main>
