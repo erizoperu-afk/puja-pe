@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '../../supabase'
 import Navbar from '../../Navbar'
 
@@ -8,6 +8,7 @@ export default function NuevoRemate() {
   const [tipo, setTipo] = useState('subasta')
   const [permiteOfertas, setPermiteOfertas] = useState(false)
   const [programarInicio, setProgramarInicio] = useState(false)
+  const [creditos, setCreditos] = useState(null)
   const [form, setForm] = useState({
     titulo: '', descripcion: '', precio_inicial: '',
     precio_directo: '', incremento_minimo: '20',
@@ -22,6 +23,17 @@ export default function NuevoRemate() {
   const [error, setError] = useState('')
   const [errores, setErrores] = useState({})
 
+  useEffect(() => {
+    async function cargarCreditos() {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) return
+      const { data: cred } = await supabase
+        .from('creditos').select('saldo').eq('usuario_id', session.user.id).single()
+      setCreditos(cred?.saldo ?? 0)
+    }
+    cargarCreditos()
+  }, [])
+
   function handleChange(e) {
     setForm({ ...form, [e.target.name]: e.target.value })
     if (errores[e.target.name]) setErrores({ ...errores, [e.target.name]: '' })
@@ -33,12 +45,9 @@ export default function NuevoRemate() {
     if (!form.categoria) nuevosErrores.categoria = 'La categoría es obligatoria.'
     if (!form.precio_inicial) nuevosErrores.precio_inicial = 'El precio inicial es obligatorio.'
     if (fotos.length === 0) nuevosErrores.fotos = 'Agrega al menos 1 foto.'
-
-    // Validar precio de compra directa
     if (form.precio_directo && Number(form.precio_directo) < Number(form.precio_inicial)) {
       nuevosErrores.precio_directo = 'El precio de compra directa no puede ser menor al precio inicial.'
     }
-
     if (programarInicio) {
       if (!form.fecha_inicio) nuevosErrores.fecha_inicio = 'La fecha de inicio es obligatoria.'
       if (!form.hora_inicio) nuevosErrores.hora_inicio = 'La hora de inicio es obligatoria.'
@@ -113,6 +122,7 @@ export default function NuevoRemate() {
     if (err) { setError('Error al publicar: ' + err.message); setCargando(false); return }
 
     await supabase.from('creditos').update({ saldo: cred.saldo - 1 }).eq('usuario_id', session.user.id)
+    setCreditos(cred.saldo - 1)
 
     if (esInmediato && nuevoRemate) {
       try {
@@ -142,6 +152,8 @@ export default function NuevoRemate() {
     setCargando(false)
   }
 
+  const sinCreditos = creditos !== null && creditos <= 0
+
   const hoy = new Date().toISOString().split('T')[0]
   const campo = { width:'100%', padding:'10px 12px', borderRadius:'8px', border:'1px solid #ddd', fontSize:'14px', marginTop:'5px', boxSizing:'border-box' }
   const campoError = { ...campo, border:'1px solid #E24B4A' }
@@ -160,6 +172,21 @@ export default function NuevoRemate() {
           <a href='/vendedor' style={{ color:'#1D9E75', textDecoration:'none', fontSize:'13px' }}>← Mi panel</a>
           <h1 style={{ fontSize:'18px', fontWeight:'500' }}>Publicar</h1>
         </div>
+
+        {/* AVISO SIN CREDITOS */}
+        {sinCreditos && (
+          <div style={{ background:'#FCEBEB', border:'1px solid #E24B4A', borderRadius:'12px', padding:'16px', marginBottom:'16px', textAlign:'center' }}>
+            <p style={{ fontSize:'15px', fontWeight:'500', color:'#A32D2D', marginBottom:'6px' }}>
+              😔 Te has quedado sin créditos
+            </p>
+            <p style={{ fontSize:'13px', color:'#A32D2D', marginBottom:'12px' }}>
+              Necesitas créditos para publicar. Recarga tu cuenta para continuar.
+            </p>
+            <a href='/vendedor' style={{ display:'inline-block', padding:'8px 20px', background:'#A32D2D', color:'white', borderRadius:'8px', textDecoration:'none', fontSize:'13px', fontWeight:'500' }}>
+              Recargar créditos
+            </a>
+          </div>
+        )}
 
         {error && <div style={{ background:'#FCEBEB', color:'#A32D2D', padding:'10px 14px', borderRadius:'8px', fontSize:'13px', marginBottom:'14px' }}>{error}</div>}
         {mensaje && <div style={{ background:'#E1F5EE', color:'#085041', padding:'10px 14px', borderRadius:'8px', fontSize:'13px', marginBottom:'14px' }}>{mensaje}</div>}
@@ -346,9 +373,17 @@ export default function NuevoRemate() {
           )}
         </div>
 
-        <button onClick={publicar} disabled={cargando}
-          style={{ width:'100%', padding:'12px', background: cargando ? '#9FE1CB' : '#1D9E75', color:'white', border:'none', borderRadius:'8px', fontSize:'15px', fontWeight:'500', cursor:'pointer' }}>
-          {cargando ? 'Publicando...' : programarInicio ? '📅 Programar publicación' : tipo === 'subasta' ? 'Publicar subasta' : 'Publicar a precio fijo'}
+        <button
+          onClick={publicar}
+          disabled={cargando || sinCreditos}
+          style={{
+            width:'100%', padding:'12px',
+            background: sinCreditos ? '#ccc' : cargando ? '#9FE1CB' : '#1D9E75',
+            color:'white', border:'none', borderRadius:'8px',
+            fontSize:'15px', fontWeight:'500',
+            cursor: sinCreditos ? 'not-allowed' : 'pointer'
+          }}>
+          {sinCreditos ? '😔 Sin créditos para publicar' : cargando ? 'Publicando...' : programarInicio ? '📅 Programar publicación' : tipo === 'subasta' ? 'Publicar subasta' : 'Publicar a precio fijo'}
         </button>
       </div>
     </main>
