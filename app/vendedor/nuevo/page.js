@@ -33,6 +33,12 @@ export default function NuevoRemate() {
     if (!form.categoria) nuevosErrores.categoria = 'La categoría es obligatoria.'
     if (!form.precio_inicial) nuevosErrores.precio_inicial = 'El precio inicial es obligatorio.'
     if (fotos.length === 0) nuevosErrores.fotos = 'Agrega al menos 1 foto.'
+
+    // Validar precio de compra directa
+    if (form.precio_directo && Number(form.precio_directo) < Number(form.precio_inicial)) {
+      nuevosErrores.precio_directo = 'El precio de compra directa no puede ser menor al precio inicial.'
+    }
+
     if (programarInicio) {
       if (!form.fecha_inicio) nuevosErrores.fecha_inicio = 'La fecha de inicio es obligatoria.'
       if (!form.hora_inicio) nuevosErrores.hora_inicio = 'La hora de inicio es obligatoria.'
@@ -108,7 +114,6 @@ export default function NuevoRemate() {
 
     await supabase.from('creditos').update({ saldo: cred.saldo - 1 }).eq('usuario_id', session.user.id)
 
-    // Publicar en Facebook automaticamente (solo si es inmediato)
     if (esInmediato && nuevoRemate) {
       try {
         await fetch('/api/facebook/publicar', {
@@ -281,8 +286,9 @@ export default function NuevoRemate() {
           {tipo === 'subasta' && (
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px' }}>
               <div>
-                <label style={{ fontSize:'12px', color:'#666' }}>Compra directa (opcional)</label>
-                <input name='precio_directo' type='number' value={form.precio_directo} onChange={handleChange} placeholder='3500' style={campo} />
+                <label style={{ fontSize:'12px', color: errores.precio_directo ? '#A32D2D' : '#666' }}>Compra directa (opcional)</label>
+                <input name='precio_directo' type='number' value={form.precio_directo} onChange={handleChange} placeholder='3500' style={errores.precio_directo ? campoError : campo} />
+                {errores.precio_directo && <p style={textoError}>{errores.precio_directo}</p>}
               </div>
               <div>
                 <label style={{ fontSize:'12px', color:'#666' }}>Duración</label>
