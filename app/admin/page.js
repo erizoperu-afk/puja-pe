@@ -49,8 +49,19 @@ export default function PanelAdmin() {
     const { data: rematesData } = await supabase
       .from('remates').select('*').order('created_at', { ascending: false })
     const { data: pujasData } = await supabase.from('pujas').select('*')
-    const { data: mensajesData } = await supabase
-      .from('mensajes').select('*, usuarios(nickname)').order('created_at', { ascending: false })
+
+    // Cargar mensajes sin join
+    const { data: mensajesRaw } = await supabase
+      .from('mensajes').select('*').order('created_at', { ascending: false })
+
+    const userIdsMensajes = [...new Set((mensajesRaw || []).map(m => m.usuario_id))]
+    const { data: usuariosMensajes } = await supabase
+      .from('usuarios').select('id, nickname').in('id', userIdsMensajes)
+
+    const mensajesConNick = (mensajesRaw || []).map(m => ({
+      ...m,
+      usuarios: { nickname: usuariosMensajes?.find(u => u.id === m.usuario_id)?.nickname || 'Usuario' }
+    }))
 
     const usuariosConCreditos = (usuariosData || []).map(u => ({
       ...u,
@@ -61,7 +72,7 @@ export default function PanelAdmin() {
 
     setUsuarios(usuariosConCreditos)
     setRemates(rematesData || [])
-    setMensajes(mensajesData || [])
+    setMensajes(mensajesConNick)
     setStats({
       totalUsuarios: usuariosData?.length || 0,
       totalRemates: rematesData?.length || 0,
@@ -69,7 +80,6 @@ export default function PanelAdmin() {
       totalPujas: pujasData?.length || 0,
     })
 
-    // Cargar usuarios pendientes de verificación
     const pendientes = (usuariosData || []).filter(u => !u.celular_verificado)
     setPendientesVerificacion(pendientes)
 
@@ -77,9 +87,21 @@ export default function PanelAdmin() {
   }
 
   async function cargarMensajes() {
-    const { data } = await supabase
-      .from('mensajes').select('*, usuarios(nickname)').order('created_at', { ascending: false })
-    setMensajes(data || [])
+    const { data: mensajesRaw } = await supabase
+      .from('mensajes').select('*').order('created_at', { ascending: false })
+
+    if (!mensajesRaw) { setMensajes([]); return }
+
+    const userIdsMensajes = [...new Set(mensajesRaw.map(m => m.usuario_id))]
+    const { data: usuariosMensajes } = await supabase
+      .from('usuarios').select('id, nickname').in('id', userIdsMensajes)
+
+    const mensajesConNick = mensajesRaw.map(m => ({
+      ...m,
+      usuarios: { nickname: usuariosMensajes?.find(u => u.id === m.usuario_id)?.nickname || 'Usuario' }
+    }))
+
+    setMensajes(mensajesConNick)
   }
 
   async function responderMensaje(mensajeId) {
