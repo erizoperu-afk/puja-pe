@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { usePathname } from 'next/navigation'
 import { supabase } from './supabase'
 
 const ADMIN_EMAIL = 'paulq@hotmail.com'
@@ -34,6 +35,7 @@ export default function Navbar() {
   const [usuario, setUsuario] = useState(null)
   const [esAdmin, setEsAdmin] = useState(false)
   const [menuAbierto, setMenuAbierto] = useState(false)
+  const pathname = usePathname()
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -54,7 +56,41 @@ export default function Navbar() {
     window.location.href = '/'
   }
 
-  const linkStyle = { padding:'12px 16px', fontSize:'14px', textDecoration:'none', color:'#444', display:'block', borderBottom:'1px solid #f5f5f5' }
+  // Estilo base para todos los botones del navbar
+  function btnStyle(ruta) {
+    const activo = pathname.startsWith(ruta)
+    return {
+      padding: '7px 16px',
+      borderRadius: '8px',
+      border: activo ? 'none' : '1px solid #ddd',
+      background: activo ? '#1D9E75' : 'transparent',
+      color: activo ? 'white' : '#444',
+      textDecoration: 'none',
+      fontSize: '13px',
+      fontWeight: '700',
+      cursor: 'pointer',
+    }
+  }
+
+  const linkStyle = {
+    padding: '12px 16px',
+    fontSize: '14px',
+    fontWeight: '700',
+    textDecoration: 'none',
+    color: '#444',
+    display: 'block',
+    borderBottom: '1px solid #f5f5f5'
+  }
+
+  function linkStyleActivo(ruta) {
+    const activo = pathname.startsWith(ruta)
+    return {
+      ...linkStyle,
+      background: activo ? '#E1F5EE' : 'transparent',
+      color: activo ? '#085041' : '#444',
+      fontWeight: '700',
+    }
+  }
 
   return (
     <>
@@ -65,17 +101,17 @@ export default function Navbar() {
         <div className='desktop-menu' style={{ display:'flex', alignItems:'center', gap:'10px' }}>
           {!usuario ? (
             <>
-              <a href='/login' style={{ padding:'7px 16px', borderRadius:'8px', border:'1px solid #ddd', textDecoration:'none', color:'black', fontSize:'13px' }}>Ingresar</a>
-              <a href='/login' style={{ padding:'7px 16px', borderRadius:'8px', border:'none', background:'#1D9E75', color:'white', textDecoration:'none', fontSize:'13px', fontWeight:'500' }}>Publicar remate</a>
+              <a href='/login' style={{ padding:'7px 16px', borderRadius:'8px', border:'1px solid #ddd', textDecoration:'none', color:'black', fontSize:'13px', fontWeight:'700' }}>Ingresar</a>
+              <a href='/login' style={{ padding:'7px 16px', borderRadius:'8px', border:'none', background:'#1D9E75', color:'white', textDecoration:'none', fontSize:'13px', fontWeight:'700' }}>Publicar remate</a>
             </>
           ) : (
             <>
-              <span style={{ fontSize:'13px', color:'#666' }}>Hola, {usuario.user_metadata?.nombre || usuario.email}</span>
-              <a href='/comprador' style={{ padding:'7px 16px', borderRadius:'8px', border:'1px solid #ddd', color:'#444', textDecoration:'none', fontSize:'13px' }}>Comprador</a>
-              <a href='/vendedor' style={{ padding:'7px 16px', borderRadius:'8px', border:'1px solid #1D9E75', color:'#1D9E75', textDecoration:'none', fontSize:'13px', fontWeight:'500' }}>Vendedor</a>
-              <a href='/mensajes' style={{ padding:'7px 16px', borderRadius:'8px', border:'1px solid #ddd', color:'#444', textDecoration:'none', fontSize:'13px' }}>Soporte</a>
-              {esAdmin && <a href='/admin' style={{ padding:'7px 16px', borderRadius:'8px', border:'none', background:'#1D9E75', color:'white', textDecoration:'none', fontSize:'13px', fontWeight:'500' }}>Admin</a>}
-              <button onClick={cerrarSesion} style={{ padding:'7px 16px', borderRadius:'8px', border:'1px solid #ddd', background:'transparent', cursor:'pointer', fontSize:'13px' }}>Cerrar sesion</button>
+              <span style={{ fontSize:'13px', color:'#666', fontWeight:'700' }}>Hola, {usuario.user_metadata?.nombre || usuario.email}</span>
+              <a href='/comprador' style={btnStyle('/comprador')}>Comprador</a>
+              <a href='/vendedor' style={btnStyle('/vendedor')}>Vendedor</a>
+              <a href='/mensajes' style={btnStyle('/mensajes')}>Soporte</a>
+              {esAdmin && <a href='/admin' style={btnStyle('/admin')}>Admin</a>}
+              <button onClick={cerrarSesion} style={{ padding:'7px 16px', borderRadius:'8px', border:'1px solid #ddd', background:'transparent', cursor:'pointer', fontSize:'13px', fontWeight:'700' }}>Cerrar sesion</button>
             </>
           )}
         </div>
@@ -95,15 +131,15 @@ export default function Navbar() {
           {!usuario ? (
             <>
               <a href='/login' style={linkStyle}>Ingresar</a>
-              <a href='/login' style={{ ...linkStyle, color:'#1D9E75', fontWeight:'500' }}>Publicar remate</a>
+              <a href='/login' style={{ ...linkStyle, color:'#1D9E75' }}>Publicar remate</a>
             </>
           ) : (
             <>
-              <div style={{ padding:'12px 16px', fontSize:'13px', color:'#999', borderBottom:'1px solid #f5f5f5' }}>Hola, {usuario.user_metadata?.nombre || usuario.email}</div>
-              <a href='/comprador' style={linkStyle}>Comprador</a>
-              <a href='/vendedor' style={{ ...linkStyle, color:'#1D9E75', fontWeight:'500' }}>Vendedor</a>
-              <a href='/mensajes' style={linkStyle}>Soporte</a>
-              {esAdmin && <a href='/admin' style={{ ...linkStyle, color:'#1D9E75', fontWeight:'500' }}>Admin</a>}
+              <div style={{ padding:'12px 16px', fontSize:'13px', fontWeight:'700', color:'#999', borderBottom:'1px solid #f5f5f5' }}>Hola, {usuario.user_metadata?.nombre || usuario.email}</div>
+              <a href='/comprador' style={linkStyleActivo('/comprador')}>Comprador</a>
+              <a href='/vendedor' style={linkStyleActivo('/vendedor')}>Vendedor</a>
+              <a href='/mensajes' style={linkStyleActivo('/mensajes')}>Soporte</a>
+              {esAdmin && <a href='/admin' style={linkStyleActivo('/admin')}>Admin</a>}
               <button onClick={cerrarSesion} style={{ ...linkStyle, background:'none', border:'none', cursor:'pointer', width:'100%', textAlign:'left', color:'#A32D2D' }}>Cerrar sesion</button>
             </>
           )}
