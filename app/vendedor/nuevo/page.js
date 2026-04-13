@@ -28,7 +28,7 @@ export default function NuevoRemate() {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) return
       const { data: cred } = await supabase
-        .from('creditos').select('saldo').eq('usuario_id', session.user.id).single()
+     .from('creditos').select('saldo').eq('usuario_id', session.user.id).maybeSingle()
       setCreditos(cred?.saldo ?? 0)
     }
     cargarCreditos()
