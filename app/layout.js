@@ -36,6 +36,23 @@ export default function RootLayout({ children }) {
         {children}
         <Footer />
         <CookieBanner />
+        <div id="pwa-banner" style="display:none;position:fixed;bottom:0;left:0;right:0;background:#1D9E75;color:white;padding:14px 16px;z-index:9999;display:none;align-items:center;justify-content:space-between;gap:12px;box-shadow:0 -2px 12px rgba(0,0,0,0.15)">
+          <div style="display:flex;align-items:center;gap:10px">
+            <img src="/icon-192.png" style="width:36px;height:36px;border-radius:8px" />
+            <div>
+              <div style="font-size:13px;font-weight:700">Instala Puja.pe</div>
+              <div style="font-size:11px;opacity:0.85">Accede rapido desde tu celular</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;flex-shrink:0">
+            <button id="pwa-cancel" style="padding:7px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.4);background:transparent;color:white;font-size:12px;cursor:pointer">
+              Ahora no
+            </button>
+            <button id="pwa-install" style="padding:7px 14px;border-radius:8px;border:none;background:white;color:#1D9E75;font-size:12px;font-weight:700;cursor:pointer">
+              Instalar
+            </button>
+          </div>
+        </div>
         <script dangerouslySetInnerHTML={{
           __html: `
             if ('serviceWorker' in navigator) {
@@ -43,6 +60,38 @@ export default function RootLayout({ children }) {
                 navigator.serviceWorker.register('/sw.js');
               });
             }
+
+            let deferredPrompt;
+            const banner = document.getElementById('pwa-banner');
+
+            window.addEventListener('beforeinstallprompt', function(e) {
+              e.preventDefault();
+              deferredPrompt = e;
+              const dismissed = localStorage.getItem('pwa-dismissed');
+              if (!dismissed) {
+                banner.style.display = 'flex';
+              }
+            });
+
+            document.getElementById('pwa-install').addEventListener('click', function() {
+              banner.style.display = 'none';
+              if (deferredPrompt) {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then(function(result) {
+                  deferredPrompt = null;
+                });
+              }
+            });
+
+            document.getElementById('pwa-cancel').addEventListener('click', function() {
+              banner.style.display = 'none';
+              localStorage.setItem('pwa-dismissed', '1');
+            });
+
+            window.addEventListener('appinstalled', function() {
+              banner.style.display = 'none';
+              deferredPrompt = null;
+            });
           `
         }} />
       </body>
