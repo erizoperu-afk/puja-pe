@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../supabase'
 
 const campo = { width:'100%', padding:'10px 12px', borderRadius:'8px', border:'1px solid #ddd', fontSize:'14px', boxSizing:'border-box' }
@@ -13,6 +13,7 @@ export default function ResetPassword() {
   const [listo, setListo] = useState(false)
   const [sesionLista, setSesionLista] = useState(false)
   const [tokenError, setTokenError] = useState(false)
+  const sesionRef = useRef(null)
 
   useEffect(() => {
     async function verificarToken() {
@@ -21,17 +22,17 @@ export default function ResetPassword() {
       const type = params.get('type')
 
       if (tokenHash && type === 'recovery') {
-        const { error } = await supabase.auth.verifyOtp({
+        const { data, error } = await supabase.auth.verifyOtp({
           token_hash: tokenHash,
           type: 'recovery'
         })
         if (error) {
           setTokenError(true)
         } else {
+          sesionRef.current = data.session
           setSesionLista(true)
         }
       } else {
-        // Fallback hash
         const hash = window.location.hash
         if (hash && hash.includes('access_token')) {
           const hashParams = new URLSearchParams(hash.replace('#', ''))
@@ -39,11 +40,12 @@ export default function ResetPassword() {
           const refreshToken = hashParams.get('refresh_token')
           const type = hashParams.get('type')
           if (type === 'recovery' && accessToken) {
-            const { error } = await supabase.auth.setSession({
+            const { data, error } = await supabase.auth.setSession({
               access_token: accessToken,
               refresh_token: refreshToken || ''
             })
-            if (error) { setTokenError(true) } else { setSesionLista(true) }
+            if (error) { setTokenError(true) }
+            else { sesionRef.current = data.session; setSesionLista(true) }
           } else {
             setTokenError(true)
           }
@@ -58,6 +60,7 @@ export default function ResetPassword() {
   async function handleReset() {
     setCargando(true)
     setError('')
+
     if (password.length < 6) {
       setError('La contraseña debe tener mínimo 6 caracteres.')
       setCargando(false); return
@@ -66,9 +69,18 @@ export default function ResetPassword() {
       setError('Las contraseñas no coinciden.')
       setCargando(false); return
     }
+
+    // Restablecer sesión antes de actualizar
+    if (sesionRef.current) {
+      await supabase.auth.setSession({
+        access_token: sesionRef.current.access_token,
+        refresh_token: sesionRef.current.refresh_token
+      })
+    }
+
     const { error } = await supabase.auth.updateUser({ password })
     if (error) {
-      setError('Error al cambiar la contraseña. El enlace puede haber expirado.')
+      setError('Error al cambiar la contraseña: ' + error.message)
     } else {
       setListo(true)
       await supabase.auth.signOut()
