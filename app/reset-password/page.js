@@ -15,62 +15,57 @@ export default function ResetPassword() {
   const [tokenError, setTokenError] = useState(false)
 
   useEffect(() => {
-    // Detectar token en el hash de la URL (formato Supabase)
-    const hash = window.location.hash
-    if (hash && hash.includes('access_token')) {
-      const params = new URLSearchParams(hash.replace('#', ''))
-      const accessToken = params.get('access_token')
-      const refreshToken = params.get('refresh_token')
+    async function verificarToken() {
+      const params = new URLSearchParams(window.location.search)
+      const tokenHash = params.get('token_hash')
       const type = params.get('type')
 
-      if (type === 'recovery' && accessToken) {
-        supabase.auth.setSession({
-          access_token: accessToken,
-          refresh_token: refreshToken || ''
-        }).then(({ error }) => {
-          if (error) {
-            setTokenError(true)
-          } else {
-            setSesionLista(true)
-          }
+      if (tokenHash && type === 'recovery') {
+        const { error } = await supabase.auth.verifyOtp({
+          token_hash: tokenHash,
+          type: 'recovery'
         })
-      } else {
-        setTokenError(true)
-      }
-    } else {
-      // Fallback: escuchar evento de Supabase
-      const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-        if (event === 'PASSWORD_RECOVERY') {
+        if (error) {
+          setTokenError(true)
+        } else {
           setSesionLista(true)
         }
-      })
-      // Si después de 4 segundos no hay sesión, mostrar error
-      const timeout = setTimeout(() => {
-        if (!sesionLista) setTokenError(true)
-      }, 4000)
-
-      return () => {
-        subscription.unsubscribe()
-        clearTimeout(timeout)
+      } else {
+        // Fallback hash
+        const hash = window.location.hash
+        if (hash && hash.includes('access_token')) {
+          const hashParams = new URLSearchParams(hash.replace('#', ''))
+          const accessToken = hashParams.get('access_token')
+          const refreshToken = hashParams.get('refresh_token')
+          const type = hashParams.get('type')
+          if (type === 'recovery' && accessToken) {
+            const { error } = await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken || ''
+            })
+            if (error) { setTokenError(true) } else { setSesionLista(true) }
+          } else {
+            setTokenError(true)
+          }
+        } else {
+          setTokenError(true)
+        }
       }
     }
+    verificarToken()
   }, [])
 
   async function handleReset() {
     setCargando(true)
     setError('')
-
     if (password.length < 6) {
       setError('La contraseña debe tener mínimo 6 caracteres.')
-      setCargando(false)
-      return
+      setCargando(false); return
     }
     if (password !== confirmar) {
       setError('Las contraseñas no coinciden.')
-      setCargando(false)
-      return
+      setCargando(false); return
     }
-
     const { error } = await supabase.auth.updateUser({ password })
     if (error) {
       setError('Error al cambiar la contraseña. El enlace puede haber expirado.')
@@ -84,7 +79,7 @@ export default function ResetPassword() {
   if (listo) return (
     <main style={{ fontFamily:'sans-serif', minHeight:'100vh', background:'#f9f9f9', display:'flex', alignItems:'center', justifyContent:'center' }}>
       <div style={{ background:'#fff', border:'1px solid #eee', borderRadius:'16px', padding:'32px', width:'100%', maxWidth:'400px', textAlign:'center' }}>
-        <div style={{ width:'56px', height:'56px', borderRadius:'50%', background:'#E1F5EE', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 16px', fontSize:'28px' }}>✓</div>
+        <div style={{ width:'56px', height:'56px', borderRadius:'50%', background:'#E1F5EE', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 16px', fontSize:'24px' }}>✓</div>
         <h2 style={{ fontSize:'18px', fontWeight:'500', marginBottom:'8px' }}>Contraseña actualizada</h2>
         <p style={{ fontSize:'14px', color:'#666', marginBottom:'24px' }}>Ya puedes ingresar con tu nueva contraseña.</p>
         <a href='/login' style={{ display:'block', padding:'11px', borderRadius:'8px', background:'#1D9E75', color:'white', textDecoration:'none', fontSize:'15px', fontWeight:'500', textAlign:'center' }}>
@@ -97,7 +92,7 @@ export default function ResetPassword() {
   if (tokenError) return (
     <main style={{ fontFamily:'sans-serif', minHeight:'100vh', background:'#f9f9f9', display:'flex', alignItems:'center', justifyContent:'center' }}>
       <div style={{ background:'#fff', border:'1px solid #eee', borderRadius:'16px', padding:'32px', width:'100%', maxWidth:'400px', textAlign:'center' }}>
-        <div style={{ width:'56px', height:'56px', borderRadius:'50%', background:'#FCEBEB', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 16px', fontSize:'28px' }}>✕</div>
+        <div style={{ width:'56px', height:'56px', borderRadius:'50%', background:'#FCEBEB', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 16px', fontSize:'24px' }}>✕</div>
         <h2 style={{ fontSize:'18px', fontWeight:'500', marginBottom:'8px' }}>Enlace inválido o expirado</h2>
         <p style={{ fontSize:'14px', color:'#666', marginBottom:'24px' }}>El enlace de recuperación expiró o ya fue usado. Solicita uno nuevo.</p>
         <a href='/login' style={{ display:'block', padding:'11px', borderRadius:'8px', background:'#1D9E75', color:'white', textDecoration:'none', fontSize:'15px', fontWeight:'500', textAlign:'center' }}>
