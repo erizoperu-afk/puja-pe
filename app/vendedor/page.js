@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../supabase'
 import Navbar from '../Navbar'
 
+const POR_PAGINA = 6
+
 export default function PanelVendedor() {
   const [remates, setRemates] = useState([])
   const [pujasXRemate, setPujasXRemate] = useState({})
@@ -16,8 +18,10 @@ export default function PanelVendedor() {
   const [session, setSession] = useState(null)
   const [contactos, setContactos] = useState({})
   const [tab, setTab] = useState('todos')
+  const [pagina, setPagina] = useState(1)
 
   useEffect(() => { cargarDatos() }, [])
+  useEffect(() => { setPagina(1) }, [tab])
 
   async function cargarDatos() {
     const { data: { session } } = await supabase.auth.getSession()
@@ -122,6 +126,25 @@ export default function PanelVendedor() {
     sin_oferta: { texto:'Sin ofertas', bg:'#f5f5f5', color:'#999'    },
   }
 
+  const btnPag = { padding:'7px 12px', borderRadius:'8px', border:'1px solid #eee', background:'#fff', cursor:'pointer', fontSize:'12px', color:'#666' }
+  const btnPagActivo = { ...btnPag, background:'#1D9E75', color:'white', border:'1px solid #1D9E75', fontWeight:'500' }
+
+  function Paginacion({ items }) {
+    const total = Math.ceil(items.length / POR_PAGINA)
+    if (total <= 1) return null
+    return (
+      <div style={{ display:'flex', justifyContent:'center', alignItems:'center', gap:'6px', marginTop:'20px', flexWrap:'wrap' }}>
+        <button onClick={() => setPagina(p => Math.max(1, p - 1))} disabled={pagina === 1}
+          style={{ ...btnPag, opacity: pagina === 1 ? 0.4 : 1 }}>← Anterior</button>
+        {Array.from({ length: total }, (_, i) => i + 1).map(n => (
+          <button key={n} onClick={() => setPagina(n)} style={n === pagina ? btnPagActivo : btnPag}>{n}</button>
+        ))}
+        <button onClick={() => setPagina(p => Math.min(total, p + 1))} disabled={pagina === total}
+          style={{ ...btnPag, opacity: pagina === total ? 0.4 : 1 }}>Siguiente →</button>
+      </div>
+    )
+  }
+
   function TarjetaRemate({ remate }) {
     const estado     = estadoRemate(remate)
     const numPujas   = pujasXRemate[remate.id] || 0
@@ -136,7 +159,6 @@ export default function PanelVendedor() {
 
     return (
       <div style={{ background:'#fff', border:`1.5px solid ${borderColor}`, borderRadius:'12px', padding:'14px', marginBottom:'10px' }}>
-
         <div style={{ display:'flex', alignItems:'center', gap:'10px', flexWrap:'wrap' }}>
           <div style={{ width:'52px', height:'52px', background:'#f5f5f5', borderRadius:'8px', border:'1px solid #eee', flexShrink:0, overflow:'hidden' }}>
             {remate.imagen_url && <img src={remate.imagen_url} alt='' style={{ width:'100%', height:'100%', objectFit:'cover' }} />}
@@ -161,7 +183,6 @@ export default function PanelVendedor() {
           </div>
         </div>
 
-        {/* BANNER VENDIDO CON CONTACTO */}
         {estado === 'vendido' && contacto && (
           <div style={{ marginTop:'12px', background:'#E6F1FB', borderRadius:'10px', padding:'12px', border:'1px solid #B5D4F4' }}>
             <p style={{ fontSize:'12px', fontWeight:'500', color:'#185FA5', marginBottom:'8px' }}>Contacta al comprador para coordinar la entrega</p>
@@ -182,14 +203,12 @@ export default function PanelVendedor() {
           </div>
         )}
 
-        {/* VENDIDO SIN CONTACTO AUN */}
         {estado === 'vendido' && !contacto && (
           <div style={{ marginTop:'12px', background:'#FFF8E1', borderRadius:'10px', padding:'10px', border:'1px solid #FAC775' }}>
             <p style={{ fontSize:'12px', color:'#854F0B' }}>Cargando datos del comprador...</p>
           </div>
         )}
 
-        {/* PROGRAMADO */}
         {estado === 'programado' && (
           <div style={{ marginTop:'12px', background:'#FFF8E1', borderRadius:'10px', padding:'12px', border:'1px solid #FAC775' }}>
             <p style={{ fontSize:'12px', fontWeight:'500', color:'#B8860B', marginBottom:'4px' }}>
@@ -202,7 +221,6 @@ export default function PanelVendedor() {
           </div>
         )}
 
-        {/* SIN OFERTA */}
         {estado === 'sin_oferta' && (
           <div style={{ marginTop:'12px', paddingTop:'12px', borderTop:'1px solid #f0f0f0' }}>
             <p style={{ fontSize:'12px', color:'#999', marginBottom:'8px' }}>Esta publicación concluyó sin recibir ofertas.</p>
@@ -245,6 +263,8 @@ export default function PanelVendedor() {
     sin_oferta: rematesSinOferta,
   }[tab]
 
+  const listaPaginada = listaTab.slice((pagina - 1) * POR_PAGINA, pagina * POR_PAGINA)
+
   const tabs = [
     { key:'todos',      label:'Todos',       count: remates.length },
     { key:'activos',    label:'Activos',     count: rematesActivos.length + rematesProgramados.length },
@@ -271,7 +291,6 @@ export default function PanelVendedor() {
           </a>
         </div>
 
-        {/* BANNER VENTAS PENDIENTES */}
         {rematesVendidos.length > 0 && (
           <div style={{ background:'#E6F1FB', border:'1.5px solid #378ADD', borderRadius:'12px', padding:'14px', marginBottom:'16px', display:'flex', alignItems:'center', justifyContent:'space-between', gap:'12px' }}>
             <div>
@@ -287,7 +306,6 @@ export default function PanelVendedor() {
           </div>
         )}
 
-        {/* CREDITOS */}
         <div style={{ background:'#E1F5EE', border:'1px solid #9FE1CB', borderRadius:'12px', padding:'14px', marginBottom:'16px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
           <div>
             <p style={{ fontSize:'13px', color:'#085041', marginBottom:'2px', fontWeight:'500' }}>Publicaciones disponibles</p>
@@ -299,7 +317,6 @@ export default function PanelVendedor() {
           </div>
         </div>
 
-        {/* METRICAS */}
         <div style={{ display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:'8px', marginBottom:'20px' }}>
           {[
             ['Activos',     rematesActivos.length,   '#1D9E75'],
@@ -314,7 +331,6 @@ export default function PanelVendedor() {
           ))}
         </div>
 
-        {/* TABS */}
         <div style={{ display:'flex', gap:'6px', marginBottom:'16px', overflowX:'auto', paddingBottom:'4px' }}>
           {tabs.map(t => (
             <button key={t.key} onClick={() => setTab(t.key)}
@@ -328,7 +344,6 @@ export default function PanelVendedor() {
           ))}
         </div>
 
-        {/* LISTA */}
         {listaTab.length === 0 ? (
           <div style={{ textAlign:'center', padding:'40px', background:'#fff', border:'1px solid #eee', borderRadius:'12px', color:'#999' }}>
             {tab === 'todos'      && 'No tienes remates publicados aún.'}
@@ -337,7 +352,13 @@ export default function PanelVendedor() {
             {tab === 'sin_oferta' && 'No tienes publicaciones sin ofertas.'}
           </div>
         ) : (
-          listaTab.map(r => <TarjetaRemate key={r.id} remate={r} />)
+          <>
+            <div style={{ fontSize:'12px', color:'#999', marginBottom:'10px' }}>
+              Mostrando {((pagina - 1) * POR_PAGINA) + 1}–{Math.min(pagina * POR_PAGINA, listaTab.length)} de {listaTab.length}
+            </div>
+            {listaPaginada.map(r => <TarjetaRemate key={r.id} remate={r} />)}
+            <Paginacion items={listaTab} />
+          </>
         )}
 
       </div>
