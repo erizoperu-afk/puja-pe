@@ -33,20 +33,33 @@ function Logo() {
 
 export default function Navbar() {
   const [usuario, setUsuario] = useState(null)
+  const [perfil, setPerfil] = useState(null)
   const [esAdmin, setEsAdmin] = useState(false)
   const [menuAbierto, setMenuAbierto] = useState(false)
   const pathname = usePathname()
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    async function cargarUsuario(session) {
       setUsuario(session?.user ?? null)
       setEsAdmin(session?.user?.email === ADMIN_EMAIL)
-    })
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        setUsuario(session?.user ?? null)
-        setEsAdmin(session?.user?.email === ADMIN_EMAIL)
+      if (session?.user) {
+        const { data } = await supabase
+          .from('usuarios')
+          .select('nombre, nickname')
+          .eq('id', session.user.id)
+          .single()
+        setPerfil(data)
+      } else {
+        setPerfil(null)
       }
+    }
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      cargarUsuario(session)
+    })
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, session) => { cargarUsuario(session) }
     )
     return () => subscription.unsubscribe()
   }, [])
@@ -56,7 +69,12 @@ export default function Navbar() {
     window.location.href = '/'
   }
 
-  // Estilo base para todos los botones del navbar
+  function nombreMostrar() {
+    if (perfil?.nombre) return perfil.nombre
+    if (perfil?.nickname) return perfil.nickname
+    return usuario?.email || ''
+  }
+
   function btnStyle(ruta) {
     const activo = pathname.startsWith(ruta)
     return {
@@ -97,7 +115,6 @@ export default function Navbar() {
       <nav style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 24px', borderBottom:'1px solid #eee', background:'#fff', position:'relative', zIndex:100 }}>
         <Logo />
 
-        {/* MENU DESKTOP */}
         <div className='desktop-menu' style={{ display:'flex', alignItems:'center', gap:'10px' }}>
           {!usuario ? (
             <>
@@ -106,7 +123,7 @@ export default function Navbar() {
             </>
           ) : (
             <>
-              <span style={{ fontSize:'13px', color:'#666', fontWeight:'700' }}>Hola, {usuario.user_metadata?.nombre || usuario.email}</span>
+              <span style={{ fontSize:'13px', color:'#666', fontWeight:'700' }}>Hola, {nombreMostrar()}</span>
               <a href='/comprador' style={btnStyle('/comprador')}>Comprador</a>
               <a href='/vendedor' style={btnStyle('/vendedor')}>Vendedor</a>
               <a href='/mensajes' style={btnStyle('/mensajes')}>Soporte</a>
@@ -116,7 +133,6 @@ export default function Navbar() {
           )}
         </div>
 
-        {/* BOTON HAMBURGUESA MOBILE */}
         <button className='mobile-menu-btn' onClick={() => setMenuAbierto(!menuAbierto)}
           style={{ display:'none', background:'none', border:'none', cursor:'pointer', padding:'8px', flexDirection:'column', gap:'5px' }}>
           <span style={{ display:'block', width:'22px', height:'2px', background:'#333', borderRadius:'2px' }}></span>
@@ -125,7 +141,6 @@ export default function Navbar() {
         </button>
       </nav>
 
-      {/* MENU MOBILE DESPLEGABLE */}
       {menuAbierto && (
         <div style={{ background:'#fff', borderBottom:'1px solid #eee', zIndex:99, position:'relative' }}>
           {!usuario ? (
@@ -135,7 +150,7 @@ export default function Navbar() {
             </>
           ) : (
             <>
-              <div style={{ padding:'12px 16px', fontSize:'13px', fontWeight:'700', color:'#999', borderBottom:'1px solid #f5f5f5' }}>Hola, {usuario.user_metadata?.nombre || usuario.email}</div>
+              <div style={{ padding:'12px 16px', fontSize:'13px', fontWeight:'700', color:'#999', borderBottom:'1px solid #f5f5f5' }}>Hola, {nombreMostrar()}</div>
               <a href='/comprador' style={linkStyleActivo('/comprador')}>Comprador</a>
               <a href='/vendedor' style={linkStyleActivo('/vendedor')}>Vendedor</a>
               <a href='/mensajes' style={linkStyleActivo('/mensajes')}>Soporte</a>
