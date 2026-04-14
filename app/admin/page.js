@@ -280,10 +280,10 @@ export default function PanelAdmin() {
         {/* STATS */}
         <div style={{ display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:'12px', marginBottom:'28px' }}>
           {[
-            ['Usuarios',       stats.totalUsuarios,   '#333'   ],
-            ['Remates activos', stats.rematesActivos,  '#1D9E75'],
-            ['Total remates',  stats.totalRemates,    '#185FA5'],
-            ['Total pujas',    stats.totalPujas,      '#854F0B'],
+            ['Usuarios',        stats.totalUsuarios,  '#333'   ],
+            ['Remates activos', stats.rematesActivos, '#1D9E75'],
+            ['Total remates',   stats.totalRemates,   '#185FA5'],
+            ['Total pujas',     stats.totalPujas,     '#854F0B'],
           ].map(([lbl, val, color]) => (
             <div key={lbl} style={{ background:'#fff', border:'1px solid #eee', borderRadius:'10px', padding:'16px' }}>
               <div style={{ fontSize:'12px', color:'#999', marginBottom:'6px' }}>{lbl}</div>
@@ -295,23 +295,23 @@ export default function PanelAdmin() {
         {/* TABS */}
         <div style={{ display:'flex', gap:'6px', marginBottom:'20px', flexWrap:'wrap' }}>
           {[
-            { key:'usuarios',       label:'Usuarios',       count: usuarios.length },
-            { key:'remates',        label:'Remates',        count: remates.length },
-            { key:'mensajes',       label:'Mensajes',       count: mensajesPendientes },
-            { key:'verificaciones', label:'Verificaciones', count: pendientesVerificacion.length },
-            { key:'beta',           label:'Modo BETA',      count: null },
-            { key:'paquetes',       label:'Paquetes',       count: null },
+            { key:'usuarios',       label:'Usuarios',       count: usuarios.length,               badge: false },
+            { key:'remates',        label:'Remates',        count: remates.length,                badge: false },
+            { key:'mensajes',       label:'Mensajes',       count: mensajesPendientes,            badge: true  },
+            { key:'verificaciones', label:'Verificaciones', count: pendientesVerificacion.length, badge: true  },
+            { key:'beta',           label:'Modo BETA',      count: null,                          badge: false },
+            { key:'paquetes',       label:'Paquetes',       count: null,                          badge: false },
           ].map(t => (
             <button key={t.key}
               onClick={() => { setTab(t.key); if (t.key === 'mensajes') cargarMensajes() }}
               style={estilo.tab(tab === t.key)}>
               {t.label}
-              {t.count !== null && t.count > 0 && (
+              {t.count !== null && t.badge && t.count > 0 && (
                 <span style={{ background: t.key === 'verificaciones' ? '#F59E0B' : '#E24B4A', color:'white', borderRadius:'50%', padding:'1px 6px', fontSize:'11px', marginLeft:'4px' }}>
                   {t.count}
                 </span>
               )}
-              {t.count !== null && (
+              {t.count !== null && !t.badge && (
                 <span style={{ opacity:.7, marginLeft:'4px' }}>({t.count})</span>
               )}
             </button>
