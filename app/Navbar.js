@@ -144,10 +144,14 @@ export default function Navbar() {
       {menuAbierto && (
         <div style={{ background:'#fff', borderBottom:'1px solid #eee', zIndex:99, position:'relative' }}>
           {!usuario ? (
-            <>
-              <a href='/login' style={linkStyle}>Ingresar</a>
-              <a href='/login' style={{ ...linkStyle, color:'#1D9E75' }}>Publicar remate</a>
-            </>
+            <div style={{ display:'flex', justifyContent:'flex-end', alignItems:'center', gap:'8px', padding:'12px 16px' }}>
+              <a href='/login' style={{ padding:'7px 14px', borderRadius:'8px', border:'1px solid #ddd', textDecoration:'none', color:'#444', fontSize:'12px', fontWeight:'700' }}>
+                Ingresar
+              </a>
+              <a href='/login' style={{ padding:'7px 14px', borderRadius:'8px', border:'none', background:'#1D9E75', color:'white', textDecoration:'none', fontSize:'12px', fontWeight:'700' }}>
+                Publicar remate
+              </a>
+            </div>
           ) : (
             <>
               <div style={{ padding:'12px 16px', fontSize:'13px', fontWeight:'700', color:'#999', borderBottom:'1px solid #f5f5f5' }}>Hola, {nombreMostrar()}</div>
