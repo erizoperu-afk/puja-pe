@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../supabase'
 import Navbar from '../Navbar'
 
+const POR_PAGINA = 6
+
 export default function PanelAdmin() {
   const [tab, setTab] = useState('usuarios')
   const [usuarios, setUsuarios] = useState([])
@@ -19,17 +21,19 @@ export default function PanelAdmin() {
   const [modoDetalle, setModoDetalle] = useState(null)
   const [configBeta, setConfigBeta] = useState(true)
   const [paquetes, setPaquetes] = useState([
-    { id: 1, nombre: 'Básico', creditos: 5, precio: 25 },
-    { id: 2, nombre: 'Standard', creditos: 15, precio: 60 },
-    { id: 3, nombre: 'Premium', creditos: 30, precio: 100 },
+    { id: 1, nombre: 'Básico',    creditos: 5,  precio: 25  },
+    { id: 2, nombre: 'Standard',  creditos: 15, precio: 60  },
+    { id: 3, nombre: 'Premium',   creditos: 30, precio: 100 },
   ])
   const [editandoPaquete, setEditandoPaquete] = useState(null)
   const [sessionUser, setSessionUser] = useState(null)
   const [respuesta, setRespuesta] = useState({})
   const [respondiendo, setRespondiendo] = useState(null)
   const [pendientesVerificacion, setPendientesVerificacion] = useState([])
+  const [pagina, setPagina] = useState(1)
 
   useEffect(() => { verificarAdmin() }, [])
+  useEffect(() => { setPagina(1) }, [tab])
 
   async function verificarAdmin() {
     const { data: { session } } = await supabase.auth.getSession()
@@ -50,14 +54,11 @@ export default function PanelAdmin() {
       .from('remates').select('*').order('created_at', { ascending: false })
     const { data: pujasData } = await supabase.from('pujas').select('*')
 
-    // Cargar mensajes sin join
     const { data: mensajesRaw } = await supabase
       .from('mensajes').select('*').order('created_at', { ascending: false })
-
     const userIdsMensajes = [...new Set((mensajesRaw || []).map(m => m.usuario_id))]
     const { data: usuariosMensajes } = await supabase
       .from('usuarios').select('id, nickname').in('id', userIdsMensajes)
-
     const mensajesConNick = (mensajesRaw || []).map(m => ({
       ...m,
       usuarios: { nickname: usuariosMensajes?.find(u => u.id === m.usuario_id)?.nickname || 'Usuario' }
@@ -79,29 +80,21 @@ export default function PanelAdmin() {
       rematesActivos: rematesData?.filter(r => r.activo).length || 0,
       totalPujas: pujasData?.length || 0,
     })
-
-    const pendientes = (usuariosData || []).filter(u => !u.celular_verificado)
-    setPendientesVerificacion(pendientes)
-
+    setPendientesVerificacion((usuariosData || []).filter(u => !u.celular_verificado))
     setCargando(false)
   }
 
   async function cargarMensajes() {
     const { data: mensajesRaw } = await supabase
       .from('mensajes').select('*').order('created_at', { ascending: false })
-
     if (!mensajesRaw) { setMensajes([]); return }
-
     const userIdsMensajes = [...new Set(mensajesRaw.map(m => m.usuario_id))]
     const { data: usuariosMensajes } = await supabase
       .from('usuarios').select('id, nickname').in('id', userIdsMensajes)
-
-    const mensajesConNick = mensajesRaw.map(m => ({
+    setMensajes(mensajesRaw.map(m => ({
       ...m,
       usuarios: { nickname: usuariosMensajes?.find(u => u.id === m.usuario_id)?.nickname || 'Usuario' }
-    }))
-
-    setMensajes(mensajesConNick)
+    })))
   }
 
   async function responderMensaje(mensajeId) {
@@ -155,16 +148,9 @@ export default function PanelAdmin() {
 
   async function aprobarVerificacion(usuarioId, nickname) {
     if (!confirm(`¿Aprobar manualmente la verificación de ${nickname}?`)) return
-    const { error } = await supabase
-      .from('usuarios')
-      .update({ celular_verificado: true })
-      .eq('id', usuarioId)
-    if (error) {
-      alert('Error: ' + error.message)
-    } else {
-      alert(`✅ Usuario ${nickname} verificado correctamente.`)
-      cargarDatos()
-    }
+    const { error } = await supabase.from('usuarios').update({ celular_verificado: true }).eq('id', usuarioId)
+    if (error) { alert('Error: ' + error.message) }
+    else { alert(`Usuario ${nickname} verificado correctamente.`); cargarDatos() }
   }
 
   function guardarPaquete(id) {
@@ -174,8 +160,45 @@ export default function PanelAdmin() {
 
   const mensajesPendientes = mensajes.filter(m => !m.respondido).length
 
+  const btnPag = { padding:'7px 12px', borderRadius:'8px', border:'1px solid #eee', background:'#fff', cursor:'pointer', fontSize:'12px', color:'#666' }
+  const btnPagActivo = { ...btnPag, background:'#1D9E75', color:'white', border:'1px solid #1D9E75', fontWeight:'500' }
+
+  function Paginacion({ items }) {
+    const total = Math.ceil(items.length / POR_PAGINA)
+    if (total <= 1) return null
+    return (
+      <div style={{ display:'flex', justifyContent:'center', alignItems:'center', gap:'6px', marginTop:'20px', flexWrap:'wrap' }}>
+        <button onClick={() => setPagina(p => Math.max(1, p - 1))} disabled={pagina === 1}
+          style={{ ...btnPag, opacity: pagina === 1 ? 0.4 : 1 }}>← Anterior</button>
+        {Array.from({ length: total }, (_, i) => i + 1).map(n => (
+          <button key={n} onClick={() => setPagina(n)} style={n === pagina ? btnPagActivo : btnPag}>{n}</button>
+        ))}
+        <button onClick={() => setPagina(p => Math.min(total, p + 1))} disabled={pagina === total}
+          style={{ ...btnPag, opacity: pagina === total ? 0.4 : 1 }}>Siguiente →</button>
+      </div>
+    )
+  }
+
+  function ContadorItems({ items }) {
+    if (items.length === 0) return null
+    return (
+      <div style={{ fontSize:'12px', color:'#999', marginBottom:'10px' }}>
+        Mostrando {((pagina - 1) * POR_PAGINA) + 1}–{Math.min(pagina * POR_PAGINA, items.length)} de {items.length}
+      </div>
+    )
+  }
+
+  function paginar(items) {
+    return items.slice((pagina - 1) * POR_PAGINA, pagina * POR_PAGINA)
+  }
+
   const estilo = {
-    tab: (activo) => ({ padding:'8px 18px', borderRadius:'20px', border:'none', cursor:'pointer', fontSize:'13px', fontWeight:'500', background: activo ? '#1D9E75' : '#f5f5f5', color: activo ? '#fff' : '#666' }),
+    tab: (activo) => ({
+      padding:'7px 16px', borderRadius:'20px', cursor:'pointer', fontSize:'12px', fontWeight:'500',
+      background: activo ? '#1D9E75' : '#fff',
+      color: activo ? '#fff' : '#666',
+      border: activo ? '1px solid #1D9E75' : '1px solid #eee',
+    }),
     card: { background:'#fff', border:'1px solid #eee', borderRadius:'12px', padding:'16px', marginBottom:'10px' },
   }
 
@@ -199,41 +222,45 @@ export default function PanelAdmin() {
         </h2>
         {modoDetalle === 'pujas' && (
           <div>
-            {pujasPorUsuario.length === 0 && <div style={{ textAlign:'center', padding:'40px', color:'#999' }}>No tiene pujas.</div>}
-            {pujasPorUsuario.map(p => (
-              <div key={p.id} style={estilo.card}>
-                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                  <div>
-                    <p style={{ fontWeight:'500', fontSize:'14px', marginBottom:'3px' }}>{p.remates?.titulo}</p>
-                    <p style={{ fontSize:'12px', color:'#999' }}>{new Date(p.created_at).toLocaleDateString('es-PE')}</p>
+            {pujasPorUsuario.length === 0
+              ? <div style={{ textAlign:'center', padding:'40px', color:'#999' }}>No tiene pujas.</div>
+              : pujasPorUsuario.map(p => (
+                <div key={p.id} style={estilo.card}>
+                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                    <div>
+                      <p style={{ fontWeight:'500', fontSize:'14px', marginBottom:'3px' }}>{p.remates?.titulo}</p>
+                      <p style={{ fontSize:'12px', color:'#999' }}>{new Date(p.created_at).toLocaleDateString('es-PE')}</p>
+                    </div>
+                    <p style={{ fontSize:'16px', fontWeight:'500', color:'#1D9E75' }}>S/ {Number(p.monto).toLocaleString()}</p>
                   </div>
-                  <p style={{ fontSize:'16px', fontWeight:'500', color:'#1D9E75' }}>S/ {Number(p.monto).toLocaleString()}</p>
                 </div>
-              </div>
-            ))}
+              ))
+            }
           </div>
         )}
         {modoDetalle === 'remates' && (
           <div>
-            {rematesPorUsuario.length === 0 && <div style={{ textAlign:'center', padding:'40px', color:'#999' }}>No tiene remates.</div>}
-            {rematesPorUsuario.map(r => (
-              <div key={r.id} style={estilo.card}>
-                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                  <div style={{ display:'flex', gap:'12px', alignItems:'center' }}>
-                    <div style={{ width:'48px', height:'48px', background:'#f5f5f5', borderRadius:'8px', overflow:'hidden', flexShrink:0 }}>
-                      {r.imagen_url && <img src={r.imagen_url} alt='' style={{ width:'100%', height:'100%', objectFit:'cover' }} />}
+            {rematesPorUsuario.length === 0
+              ? <div style={{ textAlign:'center', padding:'40px', color:'#999' }}>No tiene remates.</div>
+              : rematesPorUsuario.map(r => (
+                <div key={r.id} style={estilo.card}>
+                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                    <div style={{ display:'flex', gap:'12px', alignItems:'center' }}>
+                      <div style={{ width:'48px', height:'48px', background:'#f5f5f5', borderRadius:'8px', overflow:'hidden', flexShrink:0 }}>
+                        {r.imagen_url && <img src={r.imagen_url} alt='' style={{ width:'100%', height:'100%', objectFit:'cover' }} />}
+                      </div>
+                      <div>
+                        <p style={{ fontWeight:'500', fontSize:'14px', marginBottom:'3px' }}>{r.titulo}</p>
+                        <p style={{ fontSize:'12px', color:'#999' }}>{r.categoria} · S/ {Number(r.precio_actual).toLocaleString()}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p style={{ fontWeight:'500', fontSize:'14px', marginBottom:'3px' }}>{r.titulo}</p>
-                      <p style={{ fontSize:'12px', color:'#999' }}>{r.categoria} · S/ {Number(r.precio_actual).toLocaleString()}</p>
-                    </div>
+                    <span style={{ fontSize:'11px', background: r.activo ? '#E1F5EE' : '#f5f5f5', color: r.activo ? '#085041' : '#999', padding:'2px 8px', borderRadius:'20px' }}>
+                      {r.activo ? 'Activo' : 'Inactivo'}
+                    </span>
                   </div>
-                  <span style={{ fontSize:'11px', background: r.activo ? '#E1F5EE' : '#f5f5f5', color: r.activo ? '#085041' : '#999', padding:'2px 8px', borderRadius:'20px' }}>
-                    {r.activo ? 'Activo' : 'Inactivo'}
-                  </span>
                 </div>
-              </div>
-            ))}
+              ))
+            }
           </div>
         )}
       </div>
@@ -244,6 +271,7 @@ export default function PanelAdmin() {
     <main style={{ fontFamily:'sans-serif', background:'#f9f9f9', minHeight:'100vh' }}>
       <Navbar />
       <div style={{ maxWidth:'1000px', margin:'0 auto', padding:'24px' }}>
+
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'24px' }}>
           <h1 style={{ fontSize:'22px', fontWeight:'500' }}>Panel de administrador</h1>
           <span style={{ fontSize:'12px', background:'#1D9E75', color:'white', padding:'4px 12px', borderRadius:'20px' }}>Admin</span>
@@ -252,87 +280,99 @@ export default function PanelAdmin() {
         {/* STATS */}
         <div style={{ display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:'12px', marginBottom:'28px' }}>
           {[
-            ['Usuarios', stats.totalUsuarios],
-            ['Remates activos', stats.rematesActivos],
-            ['Total remates', stats.totalRemates],
-            ['Total pujas', stats.totalPujas],
-          ].map(([lbl, val]) => (
+            ['Usuarios',       stats.totalUsuarios,   '#333'   ],
+            ['Remates activos', stats.rematesActivos,  '#1D9E75'],
+            ['Total remates',  stats.totalRemates,    '#185FA5'],
+            ['Total pujas',    stats.totalPujas,      '#854F0B'],
+          ].map(([lbl, val, color]) => (
             <div key={lbl} style={{ background:'#fff', border:'1px solid #eee', borderRadius:'10px', padding:'16px' }}>
               <div style={{ fontSize:'12px', color:'#999', marginBottom:'6px' }}>{lbl}</div>
-              <div style={{ fontSize:'24px', fontWeight:'500' }}>{val}</div>
+              <div style={{ fontSize:'24px', fontWeight:'500', color }}>{val}</div>
             </div>
           ))}
         </div>
 
         {/* TABS */}
-        <div style={{ display:'flex', gap:'8px', marginBottom:'20px', flexWrap:'wrap' }}>
-          <button style={estilo.tab(tab === 'usuarios')} onClick={() => setTab('usuarios')}>Usuarios</button>
-          <button style={estilo.tab(tab === 'remates')} onClick={() => setTab('remates')}>Remates</button>
-          <button style={estilo.tab(tab === 'mensajes')} onClick={() => { setTab('mensajes'); cargarMensajes() }}>
-            Mensajes {mensajesPendientes > 0 &&
-              <span style={{ background:'#E24B4A', color:'white', borderRadius:'50%', padding:'1px 6px', fontSize:'11px', marginLeft:'4px' }}>
-                {mensajesPendientes}
-              </span>}
-          </button>
-          <button style={estilo.tab(tab === 'verificaciones')} onClick={() => setTab('verificaciones')}>
-            Verificaciones {pendientesVerificacion.length > 0 &&
-              <span style={{ background:'#F59E0B', color:'white', borderRadius:'50%', padding:'1px 6px', fontSize:'11px', marginLeft:'4px' }}>
-                {pendientesVerificacion.length}
-              </span>}
-          </button>
-          <button style={estilo.tab(tab === 'beta')} onClick={() => setTab('beta')}>Modo BETA</button>
-          <button style={estilo.tab(tab === 'paquetes')} onClick={() => setTab('paquetes')}>Paquetes</button>
+        <div style={{ display:'flex', gap:'6px', marginBottom:'20px', flexWrap:'wrap' }}>
+          {[
+            { key:'usuarios',       label:'Usuarios',       count: usuarios.length },
+            { key:'remates',        label:'Remates',        count: remates.length },
+            { key:'mensajes',       label:'Mensajes',       count: mensajesPendientes },
+            { key:'verificaciones', label:'Verificaciones', count: pendientesVerificacion.length },
+            { key:'beta',           label:'Modo BETA',      count: null },
+            { key:'paquetes',       label:'Paquetes',       count: null },
+          ].map(t => (
+            <button key={t.key}
+              onClick={() => { setTab(t.key); if (t.key === 'mensajes') cargarMensajes() }}
+              style={estilo.tab(tab === t.key)}>
+              {t.label}
+              {t.count !== null && t.count > 0 && (
+                <span style={{ background: t.key === 'verificaciones' ? '#F59E0B' : '#E24B4A', color:'white', borderRadius:'50%', padding:'1px 6px', fontSize:'11px', marginLeft:'4px' }}>
+                  {t.count}
+                </span>
+              )}
+              {t.count !== null && (
+                <span style={{ opacity:.7, marginLeft:'4px' }}>({t.count})</span>
+              )}
+            </button>
+          ))}
         </div>
 
         {/* USUARIOS */}
         {tab === 'usuarios' && (
           <div>
-            {usuarios.length === 0 && <div style={{ textAlign:'center', padding:'40px', color:'#999' }}>No hay usuarios.</div>}
-            {usuarios.map(u => (
-              <div key={u.id} style={estilo.card}>
-                <div style={{ display:'flex', alignItems:'center', gap:'12px' }}>
-                  <div style={{ width:'40px', height:'40px', borderRadius:'50%', background:'#E1F5EE', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'14px', fontWeight:'500', color:'#085041', flexShrink:0 }}>
-                    {u.nickname?.charAt(0).toUpperCase()}
-                  </div>
-                  <div style={{ flex:1 }}>
-                    <p style={{ fontWeight:'500', fontSize:'14px', marginBottom:'2px' }}>
-                      {u.nickname}
-                      {!u.celular_verificado && (
-                        <span style={{ fontSize:'10px', background:'#FFF8E1', color:'#7B5800', border:'1px solid #FFE082', padding:'2px 6px', borderRadius:'10px', marginLeft:'8px' }}>
-                          ⚠️ Sin verificar
-                        </span>
-                      )}
-                    </p>
-                    <div style={{ display:'flex', gap:'12px' }}>
-                      <button onClick={() => verDetalleUsuario(u, 'pujas')}
-                        style={{ fontSize:'11px', color:'#1D9E75', background:'none', border:'none', cursor:'pointer', padding:0 }}>
-                        {u.totalPujas} pujas
-                      </button>
-                      <button onClick={() => verDetalleUsuario(u, 'remates')}
-                        style={{ fontSize:'11px', color:'#1D9E75', background:'none', border:'none', cursor:'pointer', padding:0 }}>
-                        {u.totalRemates} remates
-                      </button>
+            {usuarios.length === 0
+              ? <div style={{ textAlign:'center', padding:'40px', color:'#999' }}>No hay usuarios.</div>
+              : <>
+                  <ContadorItems items={usuarios} />
+                  {paginar(usuarios).map(u => (
+                    <div key={u.id} style={estilo.card}>
+                      <div style={{ display:'flex', alignItems:'center', gap:'12px' }}>
+                        <div style={{ width:'40px', height:'40px', borderRadius:'50%', background:'#E1F5EE', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'14px', fontWeight:'500', color:'#085041', flexShrink:0 }}>
+                          {u.nickname?.charAt(0).toUpperCase()}
+                        </div>
+                        <div style={{ flex:1 }}>
+                          <p style={{ fontWeight:'500', fontSize:'14px', marginBottom:'2px' }}>
+                            {u.nickname}
+                            {!u.celular_verificado && (
+                              <span style={{ fontSize:'10px', background:'#FFF8E1', color:'#7B5800', border:'1px solid #FFE082', padding:'2px 6px', borderRadius:'10px', marginLeft:'8px' }}>
+                                Sin verificar
+                              </span>
+                            )}
+                          </p>
+                          <div style={{ display:'flex', gap:'12px' }}>
+                            <button onClick={() => verDetalleUsuario(u, 'pujas')}
+                              style={{ fontSize:'11px', color:'#1D9E75', background:'none', border:'none', cursor:'pointer', padding:0 }}>
+                              {u.totalPujas} pujas
+                            </button>
+                            <button onClick={() => verDetalleUsuario(u, 'remates')}
+                              style={{ fontSize:'11px', color:'#1D9E75', background:'none', border:'none', cursor:'pointer', padding:0 }}>
+                              {u.totalRemates} remates
+                            </button>
+                          </div>
+                        </div>
+                        <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
+                          <div style={{ textAlign:'center' }}>
+                            <p style={{ fontSize:'11px', color:'#999', marginBottom:'4px' }}>Créditos</p>
+                            <input type='number' defaultValue={u.creditos}
+                              onChange={e => setCreditosEditar({ ...creditosEditar, [u.id]: e.target.value })}
+                              style={{ width:'70px', padding:'6px 8px', borderRadius:'8px', border:'1px solid #ddd', fontSize:'13px', textAlign:'center' }} />
+                          </div>
+                          <button onClick={() => actualizarCreditos(u.id, creditosEditar[u.id] ?? u.creditos)}
+                            style={{ padding:'6px 12px', background:'#1D9E75', color:'white', border:'none', borderRadius:'8px', fontSize:'12px', cursor:'pointer' }}>
+                            Guardar
+                          </button>
+                          <button onClick={() => { if(confirm('¿Suspender a ' + u.nickname + '?')) suspenderUsuario(u.id) }}
+                            style={{ padding:'6px 12px', background:'#FCEBEB', color:'#A32D2D', border:'1px solid #E24B4A', borderRadius:'8px', fontSize:'12px', cursor:'pointer' }}>
+                            Suspender
+                          </button>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                  <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
-                    <div style={{ textAlign:'center' }}>
-                      <p style={{ fontSize:'11px', color:'#999', marginBottom:'4px' }}>Créditos</p>
-                      <input type='number' defaultValue={u.creditos}
-                        onChange={e => setCreditosEditar({ ...creditosEditar, [u.id]: e.target.value })}
-                        style={{ width:'70px', padding:'6px 8px', borderRadius:'8px', border:'1px solid #ddd', fontSize:'13px', textAlign:'center' }} />
-                    </div>
-                    <button onClick={() => actualizarCreditos(u.id, creditosEditar[u.id] ?? u.creditos)}
-                      style={{ padding:'6px 12px', background:'#1D9E75', color:'white', border:'none', borderRadius:'8px', fontSize:'12px', cursor:'pointer' }}>
-                      Guardar
-                    </button>
-                    <button onClick={() => { if(confirm('¿Suspender a ' + u.nickname + '?')) suspenderUsuario(u.id) }}
-                      style={{ padding:'6px 12px', background:'#FCEBEB', color:'#A32D2D', border:'1px solid #E24B4A', borderRadius:'8px', fontSize:'12px', cursor:'pointer' }}>
-                      Suspender
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
+                  ))}
+                  <Paginacion items={usuarios} />
+                </>
+            }
           </div>
         )}
 
@@ -342,122 +382,136 @@ export default function PanelAdmin() {
             <p style={{ fontSize:'13px', color:'#999', marginBottom:'16px' }}>
               Usuarios que se registraron pero no completaron la verificación por SMS. Puedes aprobarlos manualmente.
             </p>
-            {pendientesVerificacion.length === 0 && (
-              <div style={{ textAlign:'center', padding:'40px', color:'#999' }}>
-                ✅ No hay usuarios pendientes de verificación.
-              </div>
-            )}
-            {pendientesVerificacion.map(u => (
-              <div key={u.id} style={{ ...estilo.card, border:'1px solid #FFE082', background:'#FFFDF0' }}>
-                <div style={{ display:'flex', alignItems:'center', gap:'12px' }}>
-                  <div style={{ width:'40px', height:'40px', borderRadius:'50%', background:'#FFF8E1', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'14px', fontWeight:'500', color:'#7B5800', flexShrink:0 }}>
-                    {u.nickname?.charAt(0).toUpperCase()}
-                  </div>
-                  <div style={{ flex:1 }}>
-                    <p style={{ fontWeight:'500', fontSize:'14px', marginBottom:'2px' }}>{u.nickname}</p>
-                    <p style={{ fontSize:'12px', color:'#999' }}>
-                      Celular: +51 {u.celular} · Registrado: {new Date(u.created_at).toLocaleDateString('es-PE')}
-                    </p>
-                  </div>
-                  <button onClick={() => aprobarVerificacion(u.id, u.nickname)}
-                    style={{ padding:'8px 16px', background:'#1D9E75', color:'white', border:'none', borderRadius:'8px', fontSize:'13px', cursor:'pointer', fontWeight:'500' }}>
-                    ✅ Aprobar manualmente
-                  </button>
-                </div>
-              </div>
-            ))}
+            {pendientesVerificacion.length === 0
+              ? <div style={{ textAlign:'center', padding:'40px', color:'#999' }}>No hay usuarios pendientes de verificación.</div>
+              : <>
+                  <ContadorItems items={pendientesVerificacion} />
+                  {paginar(pendientesVerificacion).map(u => (
+                    <div key={u.id} style={{ ...estilo.card, border:'1px solid #FFE082', background:'#FFFDF0' }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:'12px' }}>
+                        <div style={{ width:'40px', height:'40px', borderRadius:'50%', background:'#FFF8E1', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'14px', fontWeight:'500', color:'#7B5800', flexShrink:0 }}>
+                          {u.nickname?.charAt(0).toUpperCase()}
+                        </div>
+                        <div style={{ flex:1 }}>
+                          <p style={{ fontWeight:'500', fontSize:'14px', marginBottom:'2px' }}>{u.nickname}</p>
+                          <p style={{ fontSize:'12px', color:'#999' }}>
+                            Celular: +51 {u.celular} · Registrado: {new Date(u.created_at).toLocaleDateString('es-PE')}
+                          </p>
+                        </div>
+                        <button onClick={() => aprobarVerificacion(u.id, u.nickname)}
+                          style={{ padding:'8px 16px', background:'#1D9E75', color:'white', border:'none', borderRadius:'8px', fontSize:'13px', cursor:'pointer', fontWeight:'500' }}>
+                          Aprobar manualmente
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  <Paginacion items={pendientesVerificacion} />
+                </>
+            }
           </div>
         )}
 
         {/* REMATES */}
         {tab === 'remates' && (
           <div>
-            {remates.map(r => (
-              <div key={r.id} style={estilo.card}>
-                <div style={{ display:'flex', alignItems:'center', gap:'16px' }}>
-                  <div style={{ width:'48px', height:'48px', background:'#f5f5f5', borderRadius:'8px', border:'1px solid #eee', flexShrink:0, overflow:'hidden' }}>
-                    {r.imagen_url && <img src={r.imagen_url} alt='' style={{ width:'100%', height:'100%', objectFit:'cover' }} />}
-                  </div>
-                  <div style={{ flex:1 }}>
-                    <p style={{ fontWeight:'500', fontSize:'14px', marginBottom:'2px' }}>{r.titulo}</p>
-                    <p style={{ fontSize:'12px', color:'#999' }}>{r.categoria} · S/ {Number(r.precio_actual).toLocaleString()}</p>
-                  </div>
-                  <span style={{ fontSize:'11px', background: r.activo ? '#E1F5EE' : '#f5f5f5', color: r.activo ? '#085041' : '#999', padding:'2px 8px', borderRadius:'20px', marginRight:'8px' }}>
-                    {r.activo ? 'Activo' : 'Inactivo'}
-                  </span>
-                  <a href={'/remate/' + r.id} target='_blank'
-                    style={{ fontSize:'12px', color:'#1D9E75', textDecoration:'none', padding:'6px 12px', border:'1px solid #1D9E75', borderRadius:'8px', marginRight:'8px' }}>
-                    Ver
-                  </a>
-                  {r.activo ? (
-                    <button onClick={() => suspenderRemate(r.id)}
-                      style={{ padding:'6px 12px', background:'#FCEBEB', color:'#A32D2D', border:'1px solid #E24B4A', borderRadius:'8px', fontSize:'12px', cursor:'pointer' }}>
-                      Suspender
-                    </button>
-                  ) : (
-                    <button onClick={() => activarRemate(r.id)}
-                      style={{ padding:'6px 12px', background:'#E1F5EE', color:'#085041', border:'1px solid #1D9E75', borderRadius:'8px', fontSize:'12px', cursor:'pointer' }}>
-                      Activar
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))}
+            {remates.length === 0
+              ? <div style={{ textAlign:'center', padding:'40px', color:'#999' }}>No hay remates.</div>
+              : <>
+                  <ContadorItems items={remates} />
+                  {paginar(remates).map(r => (
+                    <div key={r.id} style={estilo.card}>
+                      <div style={{ display:'flex', alignItems:'center', gap:'16px' }}>
+                        <div style={{ width:'48px', height:'48px', background:'#f5f5f5', borderRadius:'8px', border:'1px solid #eee', flexShrink:0, overflow:'hidden' }}>
+                          {r.imagen_url && <img src={r.imagen_url} alt='' style={{ width:'100%', height:'100%', objectFit:'cover' }} />}
+                        </div>
+                        <div style={{ flex:1 }}>
+                          <p style={{ fontWeight:'500', fontSize:'14px', marginBottom:'2px' }}>{r.titulo}</p>
+                          <p style={{ fontSize:'12px', color:'#999' }}>{r.categoria} · S/ {Number(r.precio_actual).toLocaleString()}</p>
+                        </div>
+                        <span style={{ fontSize:'11px', background: r.activo ? '#E1F5EE' : '#f5f5f5', color: r.activo ? '#085041' : '#999', padding:'2px 8px', borderRadius:'20px', marginRight:'8px' }}>
+                          {r.activo ? 'Activo' : 'Inactivo'}
+                        </span>
+                        <a href={'/remate/' + r.id} target='_blank'
+                          style={{ fontSize:'12px', color:'#1D9E75', textDecoration:'none', padding:'6px 12px', border:'1px solid #1D9E75', borderRadius:'8px', marginRight:'8px' }}>
+                          Ver
+                        </a>
+                        {r.activo
+                          ? <button onClick={() => suspenderRemate(r.id)}
+                              style={{ padding:'6px 12px', background:'#FCEBEB', color:'#A32D2D', border:'1px solid #E24B4A', borderRadius:'8px', fontSize:'12px', cursor:'pointer' }}>
+                              Suspender
+                            </button>
+                          : <button onClick={() => activarRemate(r.id)}
+                              style={{ padding:'6px 12px', background:'#E1F5EE', color:'#085041', border:'1px solid #1D9E75', borderRadius:'8px', fontSize:'12px', cursor:'pointer' }}>
+                              Activar
+                            </button>
+                        }
+                      </div>
+                    </div>
+                  ))}
+                  <Paginacion items={remates} />
+                </>
+            }
           </div>
         )}
 
         {/* MENSAJES */}
         {tab === 'mensajes' && (
           <div>
-            {mensajes.length === 0 && <div style={{ textAlign:'center', padding:'40px', color:'#999' }}>No hay mensajes.</div>}
-            {mensajes.map(m => (
-              <div key={m.id} style={{ background:'#fff', border: !m.respondido ? '1px solid #9FE1CB' : '1px solid #eee', borderRadius:'12px', padding:'20px', marginBottom:'12px' }}>
-                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:'12px' }}>
-                  <div>
-                    <p style={{ fontWeight:'500', fontSize:'14px', marginBottom:'4px' }}>{m.asunto}</p>
-                    <p style={{ fontSize:'12px', color:'#999' }}>
-                      {m.usuarios?.nickname} · {new Date(m.created_at).toLocaleDateString('es-PE', { day:'numeric', month:'long', hour:'2-digit', minute:'2-digit' })}
-                    </p>
-                  </div>
-                  <span style={{ fontSize:'11px', background: m.respondido ? '#E1F5EE' : '#FCEBEB', color: m.respondido ? '#085041' : '#A32D2D', padding:'2px 10px', borderRadius:'20px' }}>
-                    {m.respondido ? 'Respondido' : 'Pendiente'}
-                  </span>
-                </div>
-                <div style={{ background:'#f9f9f9', borderRadius:'8px', padding:'12px', marginBottom:'12px' }}>
-                  <p style={{ fontSize:'13px', color:'#444', lineHeight:'1.6' }}>{m.mensaje}</p>
-                </div>
-                {m.respuesta && (
-                  <div style={{ background:'#E1F5EE', borderRadius:'8px', padding:'12px', marginBottom:'12px', border:'1px solid #9FE1CB' }}>
-                    <p style={{ fontSize:'12px', color:'#085041', marginBottom:'4px', fontWeight:'500' }}>Tu respuesta:</p>
-                    <p style={{ fontSize:'13px', color:'#085041', lineHeight:'1.6' }}>{m.respuesta}</p>
-                  </div>
-                )}
-                {!m.respondido && (
-                  respondiendo === m.id ? (
-                    <div>
-                      <textarea value={respuesta[m.id] || ''} onChange={e => setRespuesta({...respuesta, [m.id]: e.target.value})}
-                        placeholder='Escribe tu respuesta...'
-                        style={{ width:'100%', padding:'10px 12px', borderRadius:'8px', border:'1px solid #ddd', fontSize:'13px', height:'80px', resize:'vertical', boxSizing:'border-box', marginBottom:'8px' }} />
-                      <div style={{ display:'flex', gap:'8px' }}>
-                        <button onClick={() => setRespondiendo(null)}
-                          style={{ flex:1, padding:'8px', borderRadius:'8px', border:'1px solid #ddd', background:'transparent', fontSize:'13px', cursor:'pointer', color:'#666' }}>
-                          Cancelar
-                        </button>
-                        <button onClick={() => responderMensaje(m.id)}
-                          style={{ flex:1, padding:'8px', borderRadius:'8px', border:'none', background:'#1D9E75', color:'white', fontSize:'13px', cursor:'pointer', fontWeight:'500' }}>
-                          Enviar respuesta
-                        </button>
+            {mensajes.length === 0
+              ? <div style={{ textAlign:'center', padding:'40px', color:'#999' }}>No hay mensajes.</div>
+              : <>
+                  <ContadorItems items={mensajes} />
+                  {paginar(mensajes).map(m => (
+                    <div key={m.id} style={{ background:'#fff', border: !m.respondido ? '1px solid #9FE1CB' : '1px solid #eee', borderRadius:'12px', padding:'20px', marginBottom:'12px' }}>
+                      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:'12px' }}>
+                        <div>
+                          <p style={{ fontWeight:'500', fontSize:'14px', marginBottom:'4px' }}>{m.asunto}</p>
+                          <p style={{ fontSize:'12px', color:'#999' }}>
+                            {m.usuarios?.nickname} · {new Date(m.created_at).toLocaleDateString('es-PE', { day:'numeric', month:'long', hour:'2-digit', minute:'2-digit' })}
+                          </p>
+                        </div>
+                        <span style={{ fontSize:'11px', background: m.respondido ? '#E1F5EE' : '#FCEBEB', color: m.respondido ? '#085041' : '#A32D2D', padding:'2px 10px', borderRadius:'20px' }}>
+                          {m.respondido ? 'Respondido' : 'Pendiente'}
+                        </span>
                       </div>
+                      <div style={{ background:'#f9f9f9', borderRadius:'8px', padding:'12px', marginBottom:'12px' }}>
+                        <p style={{ fontSize:'13px', color:'#444', lineHeight:'1.6' }}>{m.mensaje}</p>
+                      </div>
+                      {m.respuesta && (
+                        <div style={{ background:'#E1F5EE', borderRadius:'8px', padding:'12px', marginBottom:'12px', border:'1px solid #9FE1CB' }}>
+                          <p style={{ fontSize:'12px', color:'#085041', marginBottom:'4px', fontWeight:'500' }}>Tu respuesta:</p>
+                          <p style={{ fontSize:'13px', color:'#085041', lineHeight:'1.6' }}>{m.respuesta}</p>
+                        </div>
+                      )}
+                      {!m.respondido && (
+                        respondiendo === m.id ? (
+                          <div>
+                            <textarea value={respuesta[m.id] || ''} onChange={e => setRespuesta({...respuesta, [m.id]: e.target.value})}
+                              placeholder='Escribe tu respuesta...'
+                              style={{ width:'100%', padding:'10px 12px', borderRadius:'8px', border:'1px solid #ddd', fontSize:'13px', height:'80px', resize:'vertical', boxSizing:'border-box', marginBottom:'8px' }} />
+                            <div style={{ display:'flex', gap:'8px' }}>
+                              <button onClick={() => setRespondiendo(null)}
+                                style={{ flex:1, padding:'8px', borderRadius:'8px', border:'1px solid #ddd', background:'transparent', fontSize:'13px', cursor:'pointer', color:'#666' }}>
+                                Cancelar
+                              </button>
+                              <button onClick={() => responderMensaje(m.id)}
+                                style={{ flex:1, padding:'8px', borderRadius:'8px', border:'none', background:'#1D9E75', color:'white', fontSize:'13px', cursor:'pointer', fontWeight:'500' }}>
+                                Enviar respuesta
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <button onClick={() => setRespondiendo(m.id)}
+                            style={{ padding:'8px 16px', borderRadius:'8px', border:'none', background:'#1D9E75', color:'white', fontSize:'13px', cursor:'pointer', fontWeight:'500' }}>
+                            Responder
+                          </button>
+                        )
+                      )}
                     </div>
-                  ) : (
-                    <button onClick={() => setRespondiendo(m.id)}
-                      style={{ padding:'8px 16px', borderRadius:'8px', border:'none', background:'#1D9E75', color:'white', fontSize:'13px', cursor:'pointer', fontWeight:'500' }}>
-                      Responder
-                    </button>
-                  )
-                )}
-              </div>
-            ))}
+                  ))}
+                  <Paginacion items={mensajes} />
+                </>
+            }
           </div>
         )}
 
@@ -479,16 +533,12 @@ export default function PanelAdmin() {
             </div>
             {configBeta && (
               <div style={{ background:'#E1F5EE', border:'1px solid #9FE1CB', borderRadius:'8px', padding:'12px' }}>
-                <p style={{ fontSize:'13px', color:'#085041' }}>
-                  Durante el BETA los nuevos usuarios reciben 999 créditos gratis automáticamente.
-                </p>
+                <p style={{ fontSize:'13px', color:'#085041' }}>Durante el BETA los nuevos usuarios reciben 999 créditos gratis automáticamente.</p>
               </div>
             )}
             {!configBeta && (
               <div style={{ background:'#FCEBEB', border:'1px solid #E24B4A', borderRadius:'8px', padding:'12px' }}>
-                <p style={{ fontSize:'13px', color:'#A32D2D' }}>
-                  Fuera del BETA los usuarios deben comprar paquetes de créditos para publicar.
-                </p>
+                <p style={{ fontSize:'13px', color:'#A32D2D' }}>Fuera del BETA los usuarios deben comprar paquetes de créditos para publicar.</p>
               </div>
             )}
           </div>
