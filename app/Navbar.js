@@ -145,7 +145,7 @@ export default function Navbar() {
         <div style={{ background:'#fff', borderBottom:'1px solid #eee', zIndex:99, position:'relative' }}>
           {!usuario ? (
             <div style={{ display:'flex', justifyContent:'flex-end', alignItems:'center', gap:'8px', padding:'12px 16px' }}>
-              <a href='/login' style={{ padding:'7px 14px', borderRadius:'8px', border:'1px solid #ddd', textDecoration:'none', color:'#444', fontSize:'12px', fontWeight:'700' }}>
+              <a href='/login' style={{ padding:'7px 14px', borderRadius:'8px', border:'1px solid #1D9E75', textDecoration:'none', color:'#1D9E75', fontSize:'12px', fontWeight:'700' }}>
                 Ingresar
               </a>
               <a href='/login' style={{ padding:'7px 14px', borderRadius:'8px', border:'none', background:'#1D9E75', color:'white', textDecoration:'none', fontSize:'12px', fontWeight:'700' }}>
