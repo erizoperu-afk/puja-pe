@@ -61,12 +61,14 @@ export default function Login() {
     } else {
       const { data: perfil } = await supabase
         .from('usuarios')
-        .select('celular_verificado')
+        .select('celular_verificado, nombre, apellido, celular')
         .eq('id', data.user.id)
         .single()
 
       if (perfil && !perfil.celular_verificado) {
         window.location.href = '/verificar-celular-pendiente'
+      } else if (!perfil || !perfil.nombre || !perfil.apellido || !perfil.celular) {
+        window.location.href = '/completar-perfil'
       } else {
         window.location.href = '/'
       }
@@ -117,7 +119,6 @@ export default function Login() {
       setUserId(data.user.id)
     }
 
-    // Intentar enviar SMS — si falla igual mostrar pantalla de verificación
     await fetch('/api/verificar-celular/enviar', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
