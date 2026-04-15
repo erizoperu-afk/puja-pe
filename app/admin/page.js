@@ -295,26 +295,33 @@ export default function PanelAdmin() {
         {/* TABS */}
         <div style={{ display:'flex', gap:'6px', marginBottom:'20px', flexWrap:'wrap' }}>
           {[
-            { key:'usuarios',       label:'Usuarios',       count: usuarios.length,               badge: false },
-            { key:'remates',        label:'Remates',        count: remates.length,                badge: false },
-            { key:'mensajes',       label:'Mensajes',       count: mensajesPendientes,            badge: true  },
-            { key:'verificaciones', label:'Verificaciones', count: pendientesVerificacion.length, badge: true  },
-            { key:'beta',           label:'Modo BETA',      count: null,                          badge: false },
-            { key:'paquetes',       label:'Paquetes',       count: null,                          badge: false },
+            { key:'usuarios',       label:'Usuarios',       count: usuarios.length,               badge: false, href: null },
+            { key:'remates',        label:'Remates',        count: remates.length,                badge: false, href: null },
+            { key:'mensajes',       label:'Mensajes',       count: mensajesPendientes,            badge: true,  href: null },
+            { key:'verificaciones', label:'Verificaciones', count: pendientesVerificacion.length, badge: true,  href: null },
+            { key:'calificaciones', label:'Calificaciones', count: null,                          badge: false, href: '/admin/calificaciones' },
+            { key:'beta',           label:'Modo BETA',      count: null,                          badge: false, href: null },
+            { key:'paquetes',       label:'Paquetes',       count: null,                          badge: false, href: null },
           ].map(t => (
-            <button key={t.key}
-              onClick={() => { setTab(t.key); if (t.key === 'mensajes') cargarMensajes() }}
-              style={estilo.tab(tab === t.key)}>
-              {t.label}
-              {t.count !== null && t.badge && t.count > 0 && (
-                <span style={{ background: t.key === 'verificaciones' ? '#F59E0B' : '#E24B4A', color:'white', borderRadius:'50%', padding:'1px 6px', fontSize:'11px', marginLeft:'4px' }}>
-                  {t.count}
-                </span>
-              )}
-              {t.count !== null && !t.badge && (
-                <span style={{ opacity:.7, marginLeft:'4px' }}>({t.count})</span>
-              )}
-            </button>
+            t.href ? (
+              <a key={t.key} href={t.href} style={{ ...estilo.tab(false), textDecoration:'none' }}>
+                {t.label}
+              </a>
+            ) : (
+              <button key={t.key}
+                onClick={() => { setTab(t.key); if (t.key === 'mensajes') cargarMensajes() }}
+                style={estilo.tab(tab === t.key)}>
+                {t.label}
+                {t.count !== null && t.badge && t.count > 0 && (
+                  <span style={{ background: t.key === 'verificaciones' ? '#F59E0B' : '#E24B4A', color:'white', borderRadius:'50%', padding:'1px 6px', fontSize:'11px', marginLeft:'4px' }}>
+                    {t.count}
+                  </span>
+                )}
+                {t.count !== null && !t.badge && (
+                  <span style={{ opacity:.7, marginLeft:'4px' }}>({t.count})</span>
+                )}
+              </button>
+            )
           ))}
         </div>
 
