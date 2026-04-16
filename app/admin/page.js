@@ -286,7 +286,6 @@ export default function PanelAdmin() {
           <span style={{ fontSize:'12px', background:'#1D9E75', color:'white', padding:'4px 12px', borderRadius:'20px' }}>Admin</span>
         </div>
 
-        {/* STATS */}
         <div style={{ display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:'12px', marginBottom:'28px' }}>
           {[
             ['Usuarios',        stats.totalUsuarios,  '#333'   ],
@@ -301,7 +300,6 @@ export default function PanelAdmin() {
           ))}
         </div>
 
-        {/* TABS */}
         <div style={{ display:'flex', gap:'6px', marginBottom:'20px', flexWrap:'wrap' }}>
           {[
             { key:'usuarios',       label:'Usuarios',       count: usuarios.length,               badge: false, href: null },
@@ -334,7 +332,6 @@ export default function PanelAdmin() {
           ))}
         </div>
 
-        {/* USUARIOS */}
         {tab === 'usuarios' && (
           <div>
             {usuarios.length === 0
@@ -392,7 +389,6 @@ export default function PanelAdmin() {
           </div>
         )}
 
-        {/* VERIFICACIONES */}
         {tab === 'verificaciones' && (
           <div>
             <p style={{ fontSize:'13px', color:'#999', marginBottom:'16px' }}>
@@ -427,7 +423,6 @@ export default function PanelAdmin() {
           </div>
         )}
 
-        {/* REMATES */}
         {tab === 'remates' && (
           <div>
             {remates.length === 0
@@ -474,7 +469,6 @@ export default function PanelAdmin() {
           </div>
         )}
 
-        {/* MENSAJES */}
         {tab === 'mensajes' && (
           <div>
             {mensajes.length === 0
@@ -535,7 +529,6 @@ export default function PanelAdmin() {
           </div>
         )}
 
-        {/* MODO BETA */}
         {tab === 'beta' && (
           <div style={estilo.card}>
             <h2 style={{ fontSize:'16px', fontWeight:'500', marginBottom:'16px' }}>Configuración del modo BETA</h2>
@@ -564,7 +557,6 @@ export default function PanelAdmin() {
           </div>
         )}
 
-        {/* PAQUETES */}
         {tab === 'paquetes' && (
           <div>
             <p style={{ fontSize:'13px', color:'#999', marginBottom:'16px' }}>Define los precios de los paquetes de créditos que los vendedores pueden comprar.</p>
