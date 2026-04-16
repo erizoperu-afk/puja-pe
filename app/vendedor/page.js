@@ -19,6 +19,9 @@ export default function PanelVendedor() {
   const [contactos, setContactos] = useState({})
   const [tab, setTab] = useState('todos')
   const [pagina, setPagina] = useState(1)
+  const [editandoActivo, setEditandoActivo] = useState(null)
+  const [formEditarActivo, setFormEditarActivo] = useState({})
+  const [guardandoActivo, setGuardandoActivo] = useState(false)
 
   useEffect(() => { cargarDatos() }, [])
   useEffect(() => { setPagina(1) }, [tab])
@@ -78,6 +81,23 @@ export default function PanelVendedor() {
   async function cancelarProgramacion(remateId) {
     if (!confirm('¿Cancelar esta publicación programada?')) return
     await supabase.from('remates').update({ activo: false, fecha_inicio: null }).eq('id', remateId)
+    cargarDatos()
+  }
+
+  async function cancelarPublicacion(remateId, titulo) {
+    if (!confirm(`¿Cancelar la publicación "${titulo}"? El remate se desactivará. El crédito no se reintegra.`)) return
+    await supabase.from('remates').update({ activo: false }).eq('id', remateId)
+    cargarDatos()
+  }
+
+  async function guardarCambiosActivo(remateId) {
+    setGuardandoActivo(true)
+    await supabase.from('remates').update({
+      titulo: formEditarActivo.titulo,
+      descripcion: formEditarActivo.descripcion,
+    }).eq('id', remateId)
+    setEditandoActivo(null)
+    setGuardandoActivo(false)
     cargarDatos()
   }
 
@@ -146,11 +166,13 @@ export default function PanelVendedor() {
   }
 
   function TarjetaRemate({ remate }) {
-    const estado     = estadoRemate(remate)
-    const numPujas   = pujasXRemate[remate.id] || 0
-    const esEditando = editando === remate.id
-    const contacto   = contactos[remate.id]
-    const badge      = badges[estado]
+    const estado       = estadoRemate(remate)
+    const numPujas     = pujasXRemate[remate.id] || 0
+    const esEditando   = editando === remate.id
+    const esEditandoActivo = editandoActivo === remate.id
+    const contacto     = contactos[remate.id]
+    const badge        = badges[estado]
+    const puedeEditar  = estado === 'activo' && numPujas === 0
 
     const borderColor = estado === 'vendido'    ? '#378ADD'
                       : estado === 'activo'     ? '#1D9E75'
@@ -182,6 +204,48 @@ export default function PanelVendedor() {
             <a href={'/remate/' + remate.id} style={{ fontSize:'12px', color:'#1D9E75', textDecoration:'none', padding:'6px 10px', border:'1px solid #1D9E75', borderRadius:'8px' }}>Ver</a>
           </div>
         </div>
+
+        {/* ACCIONES PARA REMATE ACTIVO SIN PUJAS */}
+        {puedeEditar && !esEditandoActivo && (
+          <div style={{ marginTop:'12px', paddingTop:'12px', borderTop:'1px solid #f0f0f0', display:'flex', gap:'8px', flexWrap:'wrap' }}>
+            <button
+              onClick={() => { setEditandoActivo(remate.id); setFormEditarActivo({ titulo: remate.titulo, descripcion: remate.descripcion }) }}
+              style={{ flex:1, padding:'8px', borderRadius:'8px', border:'1px solid #1D9E75', background:'transparent', fontSize:'12px', cursor:'pointer', color:'#1D9E75', minWidth:'140px' }}>
+              Modificar publicación
+            </button>
+            <button
+              onClick={() => cancelarPublicacion(remate.id, remate.titulo)}
+              style={{ flex:1, padding:'8px', borderRadius:'8px', border:'1px solid #E24B4A', background:'transparent', fontSize:'12px', cursor:'pointer', color:'#A32D2D', minWidth:'140px' }}>
+              Cancelar publicación
+            </button>
+          </div>
+        )}
+
+        {/* FORMULARIO EDITAR ACTIVO SIN PUJAS */}
+        {puedeEditar && esEditandoActivo && (
+          <div style={{ marginTop:'12px', paddingTop:'12px', borderTop:'1px solid #f0f0f0' }}>
+            <div style={{ background:'#f9f9f9', borderRadius:'8px', padding:'12px' }}>
+              <p style={{ fontSize:'12px', fontWeight:'500', color:'#444', marginBottom:'8px' }}>Modificar publicación — sin costo de crédito</p>
+              <input value={formEditarActivo.titulo} onChange={e => setFormEditarActivo({...formEditarActivo, titulo: e.target.value})} placeholder='Título' style={campo} />
+              <textarea value={formEditarActivo.descripcion} onChange={e => setFormEditarActivo({...formEditarActivo, descripcion: e.target.value})} placeholder='Descripción' style={{ ...campo, height:'60px', resize:'vertical' }} />
+              <p style={{ fontSize:'11px', color:'#999', marginBottom:'8px' }}>Nota: el precio no puede modificarse una vez publicado.</p>
+              <div style={{ display:'flex', gap:'8px' }}>
+                <button onClick={() => setEditandoActivo(null)} style={{ flex:1, padding:'8px', borderRadius:'8px', border:'1px solid #ddd', background:'transparent', fontSize:'13px', cursor:'pointer', color:'#666' }}>Cancelar</button>
+                <button onClick={() => guardarCambiosActivo(remate.id)} disabled={guardandoActivo}
+                  style={{ flex:1, padding:'8px', borderRadius:'8px', border:'none', background:'#1D9E75', color:'white', fontSize:'13px', cursor:'pointer', fontWeight:'500' }}>
+                  {guardandoActivo ? 'Guardando...' : 'Guardar cambios'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* AVISO SI TIENE PUJAS — no puede editar */}
+        {estado === 'activo' && numPujas > 0 && (
+          <div style={{ marginTop:'10px', paddingTop:'10px', borderTop:'1px solid #f0f0f0' }}>
+            <p style={{ fontSize:'11px', color:'#999' }}>Esta publicación tiene {numPujas} {numPujas === 1 ? 'puja' : 'pujas'} — no puede modificarse ni cancelarse.</p>
+          </div>
+        )}
 
         {estado === 'vendido' && contacto && (
           <div style={{ marginTop:'12px', background:'#E6F1FB', borderRadius:'10px', padding:'12px', border:'1px solid #B5D4F4' }}>
