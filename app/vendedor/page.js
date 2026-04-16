@@ -95,6 +95,8 @@ export default function PanelVendedor() {
     await supabase.from('remates').update({
       titulo: formEditarActivo.titulo,
       descripcion: formEditarActivo.descripcion,
+      precio_inicial: Number(formEditarActivo.precio_inicial),
+      precio_actual: Number(formEditarActivo.precio_inicial),
     }).eq('id', remateId)
     setEditandoActivo(null)
     setGuardandoActivo(false)
@@ -161,161 +163,6 @@ export default function PanelVendedor() {
         ))}
         <button onClick={() => setPagina(p => Math.min(total, p + 1))} disabled={pagina === total}
           style={{ ...btnPag, opacity: pagina === total ? 0.4 : 1 }}>Siguiente →</button>
-      </div>
-    )
-  }
-
-  function TarjetaRemate({ remate }) {
-    const estado       = estadoRemate(remate)
-    const numPujas     = pujasXRemate[remate.id] || 0
-    const esEditando   = editando === remate.id
-    const esEditandoActivo = editandoActivo === remate.id
-    const contacto     = contactos[remate.id]
-    const badge        = badges[estado]
-    const puedeEditar  = estado === 'activo' && numPujas === 0
-
-    const borderColor = estado === 'vendido'    ? '#378ADD'
-                      : estado === 'activo'     ? '#1D9E75'
-                      : estado === 'programado' ? '#FFD700'
-                      : '#eee'
-
-    return (
-      <div style={{ background:'#fff', border:`1.5px solid ${borderColor}`, borderRadius:'12px', padding:'14px', marginBottom:'10px' }}>
-        <div style={{ display:'flex', alignItems:'center', gap:'10px', flexWrap:'wrap' }}>
-          <div style={{ width:'52px', height:'52px', background:'#f5f5f5', borderRadius:'8px', border:'1px solid #eee', flexShrink:0, overflow:'hidden' }}>
-            {remate.imagen_url && <img src={remate.imagen_url} alt='' style={{ width:'100%', height:'100%', objectFit:'cover' }} />}
-          </div>
-          <div style={{ flex:1, minWidth:'120px' }}>
-            <div style={{ marginBottom:'3px' }}>
-              <span style={{ fontSize:'10px', background: badge.bg, color: badge.color, padding:'2px 8px', borderRadius:'20px', fontWeight:'500' }}>{badge.texto}</span>
-            </div>
-            <p style={{ fontWeight:'500', fontSize:'13px', marginBottom:'1px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{remate.titulo}</p>
-            <p style={{ fontSize:'11px', color:'#999' }}>{remate.categoria}</p>
-          </div>
-          <div style={{ display:'flex', gap:'16px', alignItems:'center', flexShrink:0 }}>
-            <div style={{ textAlign:'center' }}>
-              <p style={{ fontSize:'10px', color:'#999', marginBottom:'2px' }}>Pujas</p>
-              <p style={{ fontSize:'20px', fontWeight:'500', color: numPujas > 0 ? '#1D9E75' : '#ccc' }}>{numPujas}</p>
-            </div>
-            <div style={{ textAlign:'right' }}>
-              <p style={{ fontSize:'10px', color:'#999', marginBottom:'2px' }}>{estado === 'activo' ? 'Precio actual' : 'Precio final'}</p>
-              <p style={{ fontSize:'15px', fontWeight:'500' }}>S/ {Number(remate.precio_actual).toLocaleString()}</p>
-            </div>
-            <a href={'/remate/' + remate.id} style={{ fontSize:'12px', color:'#1D9E75', textDecoration:'none', padding:'6px 10px', border:'1px solid #1D9E75', borderRadius:'8px' }}>Ver</a>
-          </div>
-        </div>
-
-        {/* ACCIONES PARA REMATE ACTIVO SIN PUJAS */}
-        {puedeEditar && !esEditandoActivo && (
-          <div style={{ marginTop:'12px', paddingTop:'12px', borderTop:'1px solid #f0f0f0', display:'flex', gap:'8px', flexWrap:'wrap' }}>
-            <button
-              onClick={() => { setEditandoActivo(remate.id); setFormEditarActivo({ titulo: remate.titulo, descripcion: remate.descripcion }) }}
-              style={{ flex:1, padding:'8px', borderRadius:'8px', border:'1px solid #1D9E75', background:'transparent', fontSize:'12px', cursor:'pointer', color:'#1D9E75', minWidth:'140px' }}>
-              Modificar publicación
-            </button>
-            <button
-              onClick={() => cancelarPublicacion(remate.id, remate.titulo)}
-              style={{ flex:1, padding:'8px', borderRadius:'8px', border:'1px solid #E24B4A', background:'transparent', fontSize:'12px', cursor:'pointer', color:'#A32D2D', minWidth:'140px' }}>
-              Cancelar publicación
-            </button>
-          </div>
-        )}
-
-        {/* FORMULARIO EDITAR ACTIVO SIN PUJAS */}
-        {puedeEditar && esEditandoActivo && (
-          <div style={{ marginTop:'12px', paddingTop:'12px', borderTop:'1px solid #f0f0f0' }}>
-            <div style={{ background:'#f9f9f9', borderRadius:'8px', padding:'12px' }}>
-              <p style={{ fontSize:'12px', fontWeight:'500', color:'#444', marginBottom:'8px' }}>Modificar publicación — sin costo de crédito</p>
-              <input value={formEditarActivo.titulo} onChange={e => setFormEditarActivo({...formEditarActivo, titulo: e.target.value})} placeholder='Título' style={campo} />
-              <textarea value={formEditarActivo.descripcion} onChange={e => setFormEditarActivo({...formEditarActivo, descripcion: e.target.value})} placeholder='Descripción' style={{ ...campo, height:'60px', resize:'vertical' }} />
-              <p style={{ fontSize:'11px', color:'#999', marginBottom:'8px' }}>Nota: el precio no puede modificarse una vez publicado.</p>
-              <div style={{ display:'flex', gap:'8px' }}>
-                <button onClick={() => setEditandoActivo(null)} style={{ flex:1, padding:'8px', borderRadius:'8px', border:'1px solid #ddd', background:'transparent', fontSize:'13px', cursor:'pointer', color:'#666' }}>Cancelar</button>
-                <button onClick={() => guardarCambiosActivo(remate.id)} disabled={guardandoActivo}
-                  style={{ flex:1, padding:'8px', borderRadius:'8px', border:'none', background:'#1D9E75', color:'white', fontSize:'13px', cursor:'pointer', fontWeight:'500' }}>
-                  {guardandoActivo ? 'Guardando...' : 'Guardar cambios'}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* AVISO SI TIENE PUJAS — no puede editar */}
-        {estado === 'activo' && numPujas > 0 && (
-          <div style={{ marginTop:'10px', paddingTop:'10px', borderTop:'1px solid #f0f0f0' }}>
-            <p style={{ fontSize:'11px', color:'#999' }}>Esta publicación tiene {numPujas} {numPujas === 1 ? 'puja' : 'pujas'} — no puede modificarse ni cancelarse.</p>
-          </div>
-        )}
-
-        {estado === 'vendido' && contacto && (
-          <div style={{ marginTop:'12px', background:'#E6F1FB', borderRadius:'10px', padding:'12px', border:'1px solid #B5D4F4' }}>
-            <p style={{ fontSize:'12px', fontWeight:'500', color:'#185FA5', marginBottom:'8px' }}>Contacta al comprador para coordinar la entrega</p>
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(140px, 1fr))', gap:'8px' }}>
-              <div>
-                <p style={{ fontSize:'10px', color:'#666', marginBottom:'2px' }}>Nombre</p>
-                <p style={{ fontSize:'13px', fontWeight:'500', color:'#185FA5' }}>{contacto.nombre} {contacto.apellido}</p>
-              </div>
-              <div>
-                <p style={{ fontSize:'10px', color:'#666', marginBottom:'2px' }}>Celular</p>
-                <p style={{ fontSize:'13px', fontWeight:'500', color:'#185FA5' }}>+51 {contacto.celular}</p>
-              </div>
-              <div>
-                <p style={{ fontSize:'10px', color:'#666', marginBottom:'2px' }}>Nickname</p>
-                <p style={{ fontSize:'13px', fontWeight:'500', color:'#185FA5' }}>{contacto.nickname}</p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {estado === 'vendido' && !contacto && (
-          <div style={{ marginTop:'12px', background:'#FFF8E1', borderRadius:'10px', padding:'10px', border:'1px solid #FAC775' }}>
-            <p style={{ fontSize:'12px', color:'#854F0B' }}>Cargando datos del comprador...</p>
-          </div>
-        )}
-
-        {estado === 'programado' && (
-          <div style={{ marginTop:'12px', background:'#FFF8E1', borderRadius:'10px', padding:'12px', border:'1px solid #FAC775' }}>
-            <p style={{ fontSize:'12px', fontWeight:'500', color:'#B8860B', marginBottom:'4px' }}>
-              Se activará el {new Date(remate.fecha_inicio).toLocaleDateString('es-PE', { weekday:'long', day:'numeric', month:'long', hour:'2-digit', minute:'2-digit' })}
-            </p>
-            <button onClick={() => cancelarProgramacion(remate.id)}
-              style={{ fontSize:'12px', color:'#A32D2D', background:'none', border:'1px solid #E24B4A', borderRadius:'6px', padding:'4px 10px', cursor:'pointer', marginTop:'6px' }}>
-              Cancelar programación
-            </button>
-          </div>
-        )}
-
-        {estado === 'sin_oferta' && (
-          <div style={{ marginTop:'12px', paddingTop:'12px', borderTop:'1px solid #f0f0f0' }}>
-            <p style={{ fontSize:'12px', color:'#999', marginBottom:'8px' }}>Esta publicación concluyó sin recibir ofertas.</p>
-            {esEditando ? (
-              <div style={{ background:'#f9f9f9', borderRadius:'8px', padding:'12px' }}>
-                <p style={{ fontSize:'12px', fontWeight:'500', color:'#444', marginBottom:'8px' }}>Editar y republicar — consume 1 crédito</p>
-                <input value={formEditar.titulo} onChange={e => setFormEditar({...formEditar, titulo: e.target.value})} placeholder='Título' style={campo} />
-                <textarea value={formEditar.descripcion} onChange={e => setFormEditar({...formEditar, descripcion: e.target.value})} placeholder='Descripción' style={{ ...campo, height:'60px', resize:'vertical' }} />
-                <input type='number' value={formEditar.precio_inicial} onChange={e => setFormEditar({...formEditar, precio_inicial: e.target.value})} placeholder='Nuevo precio (S/)' style={campo} />
-                <div style={{ display:'flex', gap:'8px' }}>
-                  <button onClick={() => setEditando(null)} style={{ flex:1, padding:'8px', borderRadius:'8px', border:'1px solid #ddd', background:'transparent', fontSize:'13px', cursor:'pointer', color:'#666' }}>Cancelar</button>
-                  <button onClick={() => guardarYRepublicar(remate.id)} disabled={guardando}
-                    style={{ flex:1, padding:'8px', borderRadius:'8px', border:'none', background:'#1D9E75', color:'white', fontSize:'13px', cursor:'pointer', fontWeight:'500' }}>
-                    {guardando ? 'Publicando...' : 'Guardar y republicar'}
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div style={{ display:'flex', gap:'8px', flexWrap:'wrap' }}>
-                <button onClick={() => { setEditando(remate.id); setFormEditar({ titulo: remate.titulo, descripcion: remate.descripcion, precio_inicial: remate.precio_inicial }) }}
-                  style={{ flex:1, padding:'8px', borderRadius:'8px', border:'1px solid #ddd', background:'transparent', fontSize:'12px', cursor:'pointer', color:'#444', minWidth:'140px' }}>
-                  Modificar y republicar (1 crédito)
-                </button>
-                <button onClick={() => republicar(remate)}
-                  style={{ flex:1, padding:'8px', borderRadius:'8px', border:'none', background:'#1D9E75', color:'white', fontSize:'12px', cursor:'pointer', fontWeight:'500', minWidth:'140px' }}>
-                  Republicar igual (1 crédito)
-                </button>
-              </div>
-            )}
-          </div>
-        )}
       </div>
     )
   }
@@ -420,11 +267,177 @@ export default function PanelVendedor() {
             <div style={{ fontSize:'12px', color:'#999', marginBottom:'10px' }}>
               Mostrando {((pagina - 1) * POR_PAGINA) + 1}–{Math.min(pagina * POR_PAGINA, listaTab.length)} de {listaTab.length}
             </div>
-            {listaPaginada.map(r => <TarjetaRemate key={r.id} remate={r} />)}
+            {listaPaginada.map(r => {
+              const estado     = estadoRemate(r)
+              const numPujas   = pujasXRemate[r.id] || 0
+              const contacto   = contactos[r.id]
+              const badge      = badges[estado]
+              const puedeEditar = estado === 'activo' && numPujas === 0
+              const esEditandoEsteActivo = editandoActivo === r.id
+              const esEditandoEsteSinOferta = editando === r.id
+
+              const borderColor = estado === 'vendido'    ? '#378ADD'
+                                : estado === 'activo'     ? '#1D9E75'
+                                : estado === 'programado' ? '#FFD700'
+                                : '#eee'
+
+              return (
+                <div key={r.id} style={{ background:'#fff', border:`1.5px solid ${borderColor}`, borderRadius:'12px', padding:'14px', marginBottom:'10px' }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:'10px', flexWrap:'wrap' }}>
+                    <div style={{ width:'52px', height:'52px', background:'#f5f5f5', borderRadius:'8px', border:'1px solid #eee', flexShrink:0, overflow:'hidden' }}>
+                      {r.imagen_url && <img src={r.imagen_url} alt='' style={{ width:'100%', height:'100%', objectFit:'cover' }} />}
+                    </div>
+                    <div style={{ flex:1, minWidth:'120px' }}>
+                      <div style={{ marginBottom:'3px' }}>
+                        <span style={{ fontSize:'10px', background: badge.bg, color: badge.color, padding:'2px 8px', borderRadius:'20px', fontWeight:'500' }}>{badge.texto}</span>
+                      </div>
+                      <p style={{ fontWeight:'500', fontSize:'13px', marginBottom:'1px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{r.titulo}</p>
+                      <p style={{ fontSize:'11px', color:'#999' }}>{r.categoria}</p>
+                    </div>
+                    <div style={{ display:'flex', gap:'16px', alignItems:'center', flexShrink:0 }}>
+                      <div style={{ textAlign:'center' }}>
+                        <p style={{ fontSize:'10px', color:'#999', marginBottom:'2px' }}>Pujas</p>
+                        <p style={{ fontSize:'20px', fontWeight:'500', color: numPujas > 0 ? '#1D9E75' : '#ccc' }}>{numPujas}</p>
+                      </div>
+                      <div style={{ textAlign:'right' }}>
+                        <p style={{ fontSize:'10px', color:'#999', marginBottom:'2px' }}>{estado === 'activo' ? 'Precio actual' : 'Precio final'}</p>
+                        <p style={{ fontSize:'15px', fontWeight:'500' }}>S/ {Number(r.precio_actual).toLocaleString()}</p>
+                      </div>
+                      <a href={'/remate/' + r.id} style={{ fontSize:'12px', color:'#1D9E75', textDecoration:'none', padding:'6px 10px', border:'1px solid #1D9E75', borderRadius:'8px' }}>Ver</a>
+                    </div>
+                  </div>
+
+                  {/* ACTIVO SIN PUJAS — botones editar/cancelar */}
+                  {puedeEditar && !esEditandoEsteActivo && (
+                    <div style={{ marginTop:'12px', paddingTop:'12px', borderTop:'1px solid #f0f0f0', display:'flex', gap:'8px', flexWrap:'wrap' }}>
+                      <button onClick={() => { setEditandoActivo(r.id); setFormEditarActivo({ titulo: r.titulo, descripcion: r.descripcion, precio_inicial: r.precio_inicial }) }}
+                        style={{ flex:1, padding:'8px', borderRadius:'8px', border:'1px solid #1D9E75', background:'transparent', fontSize:'12px', cursor:'pointer', color:'#1D9E75', minWidth:'140px' }}>
+                        Modificar publicación
+                      </button>
+                      <button onClick={() => cancelarPublicacion(r.id, r.titulo)}
+                        style={{ flex:1, padding:'8px', borderRadius:'8px', border:'1px solid #E24B4A', background:'transparent', fontSize:'12px', cursor:'pointer', color:'#A32D2D', minWidth:'140px' }}>
+                        Cancelar publicación
+                      </button>
+                    </div>
+                  )}
+
+                  {/* FORMULARIO EDITAR ACTIVO */}
+                  {puedeEditar && esEditandoEsteActivo && (
+                    <div style={{ marginTop:'12px', paddingTop:'12px', borderTop:'1px solid #f0f0f0' }}>
+                      <div style={{ background:'#f9f9f9', borderRadius:'8px', padding:'12px' }}>
+                        <p style={{ fontSize:'12px', fontWeight:'500', color:'#444', marginBottom:'8px' }}>Modificar publicación — sin costo de crédito</p>
+                        <input
+                          value={formEditarActivo.titulo}
+                          onChange={e => setFormEditarActivo(prev => ({...prev, titulo: e.target.value}))}
+                          placeholder='Título' style={campo} />
+                        <textarea
+                          value={formEditarActivo.descripcion}
+                          onChange={e => setFormEditarActivo(prev => ({...prev, descripcion: e.target.value}))}
+                          placeholder='Descripción' style={{ ...campo, height:'60px', resize:'vertical' }} />
+                        <input
+                          type='number'
+                          value={formEditarActivo.precio_inicial}
+                          onChange={e => setFormEditarActivo(prev => ({...prev, precio_inicial: e.target.value}))}
+                          placeholder='Precio (S/)' style={campo} />
+                        <div style={{ display:'flex', gap:'8px' }}>
+                          <button onClick={() => setEditandoActivo(null)}
+                            style={{ flex:1, padding:'8px', borderRadius:'8px', border:'1px solid #ddd', background:'transparent', fontSize:'13px', cursor:'pointer', color:'#666' }}>
+                            Cancelar
+                          </button>
+                          <button onClick={() => guardarCambiosActivo(r.id)} disabled={guardandoActivo}
+                            style={{ flex:1, padding:'8px', borderRadius:'8px', border:'none', background:'#1D9E75', color:'white', fontSize:'13px', cursor:'pointer', fontWeight:'500' }}>
+                            {guardandoActivo ? 'Guardando...' : 'Guardar cambios'}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ACTIVO CON PUJAS — no puede editar */}
+                  {estado === 'activo' && numPujas > 0 && (
+                    <div style={{ marginTop:'10px', paddingTop:'10px', borderTop:'1px solid #f0f0f0' }}>
+                      <p style={{ fontSize:'11px', color:'#999' }}>Esta publicación tiene {numPujas} {numPujas === 1 ? 'puja' : 'pujas'} — no puede modificarse ni cancelarse.</p>
+                    </div>
+                  )}
+
+                  {/* VENDIDO CON CONTACTO */}
+                  {estado === 'vendido' && contacto && (
+                    <div style={{ marginTop:'12px', background:'#E6F1FB', borderRadius:'10px', padding:'12px', border:'1px solid #B5D4F4' }}>
+                      <p style={{ fontSize:'12px', fontWeight:'500', color:'#185FA5', marginBottom:'8px' }}>Contacta al comprador para coordinar la entrega</p>
+                      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(140px, 1fr))', gap:'8px' }}>
+                        <div>
+                          <p style={{ fontSize:'10px', color:'#666', marginBottom:'2px' }}>Nombre</p>
+                          <p style={{ fontSize:'13px', fontWeight:'500', color:'#185FA5' }}>{contacto.nombre} {contacto.apellido}</p>
+                        </div>
+                        <div>
+                          <p style={{ fontSize:'10px', color:'#666', marginBottom:'2px' }}>Celular</p>
+                          <p style={{ fontSize:'13px', fontWeight:'500', color:'#185FA5' }}>+51 {contacto.celular}</p>
+                        </div>
+                        <div>
+                          <p style={{ fontSize:'10px', color:'#666', marginBottom:'2px' }}>Nickname</p>
+                          <p style={{ fontSize:'13px', fontWeight:'500', color:'#185FA5' }}>{contacto.nickname}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {estado === 'vendido' && !contacto && (
+                    <div style={{ marginTop:'12px', background:'#FFF8E1', borderRadius:'10px', padding:'10px', border:'1px solid #FAC775' }}>
+                      <p style={{ fontSize:'12px', color:'#854F0B' }}>Cargando datos del comprador...</p>
+                    </div>
+                  )}
+
+                  {/* PROGRAMADO */}
+                  {estado === 'programado' && (
+                    <div style={{ marginTop:'12px', background:'#FFF8E1', borderRadius:'10px', padding:'12px', border:'1px solid #FAC775' }}>
+                      <p style={{ fontSize:'12px', fontWeight:'500', color:'#B8860B', marginBottom:'4px' }}>
+                        Se activará el {new Date(r.fecha_inicio).toLocaleDateString('es-PE', { weekday:'long', day:'numeric', month:'long', hour:'2-digit', minute:'2-digit' })}
+                      </p>
+                      <button onClick={() => cancelarProgramacion(r.id)}
+                        style={{ fontSize:'12px', color:'#A32D2D', background:'none', border:'1px solid #E24B4A', borderRadius:'6px', padding:'4px 10px', cursor:'pointer', marginTop:'6px' }}>
+                        Cancelar programación
+                      </button>
+                    </div>
+                  )}
+
+                  {/* SIN OFERTA */}
+                  {estado === 'sin_oferta' && (
+                    <div style={{ marginTop:'12px', paddingTop:'12px', borderTop:'1px solid #f0f0f0' }}>
+                      <p style={{ fontSize:'12px', color:'#999', marginBottom:'8px' }}>Esta publicación concluyó sin recibir ofertas.</p>
+                      {esEditandoEsteSinOferta ? (
+                        <div style={{ background:'#f9f9f9', borderRadius:'8px', padding:'12px' }}>
+                          <p style={{ fontSize:'12px', fontWeight:'500', color:'#444', marginBottom:'8px' }}>Editar y republicar — consume 1 crédito</p>
+                          <input value={formEditar.titulo} onChange={e => setFormEditar(prev => ({...prev, titulo: e.target.value}))} placeholder='Título' style={campo} />
+                          <textarea value={formEditar.descripcion} onChange={e => setFormEditar(prev => ({...prev, descripcion: e.target.value}))} placeholder='Descripción' style={{ ...campo, height:'60px', resize:'vertical' }} />
+                          <input type='number' value={formEditar.precio_inicial} onChange={e => setFormEditar(prev => ({...prev, precio_inicial: e.target.value}))} placeholder='Nuevo precio (S/)' style={campo} />
+                          <div style={{ display:'flex', gap:'8px' }}>
+                            <button onClick={() => setEditando(null)} style={{ flex:1, padding:'8px', borderRadius:'8px', border:'1px solid #ddd', background:'transparent', fontSize:'13px', cursor:'pointer', color:'#666' }}>Cancelar</button>
+                            <button onClick={() => guardarYRepublicar(r.id)} disabled={guardando}
+                              style={{ flex:1, padding:'8px', borderRadius:'8px', border:'none', background:'#1D9E75', color:'white', fontSize:'13px', cursor:'pointer', fontWeight:'500' }}>
+                              {guardando ? 'Publicando...' : 'Guardar y republicar'}
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div style={{ display:'flex', gap:'8px', flexWrap:'wrap' }}>
+                          <button onClick={() => { setEditando(r.id); setFormEditar({ titulo: r.titulo, descripcion: r.descripcion, precio_inicial: r.precio_inicial }) }}
+                            style={{ flex:1, padding:'8px', borderRadius:'8px', border:'1px solid #ddd', background:'transparent', fontSize:'12px', cursor:'pointer', color:'#444', minWidth:'140px' }}>
+                            Modificar y republicar (1 crédito)
+                          </button>
+                          <button onClick={() => republicar(r)}
+                            style={{ flex:1, padding:'8px', borderRadius:'8px', border:'none', background:'#1D9E75', color:'white', fontSize:'12px', cursor:'pointer', fontWeight:'500', minWidth:'140px' }}>
+                            Republicar igual (1 crédito)
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
             <Paginacion items={listaTab} />
           </>
         )}
-
       </div>
     </main>
   )
