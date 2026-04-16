@@ -146,6 +146,15 @@ export default function PanelAdmin() {
     cargarDatos()
   }
 
+  async function eliminarRemate(remateId, titulo) {
+    if (!confirm(`¿Eliminar permanentemente "${titulo}"? Esta acción no se puede deshacer.`)) return
+    await supabase.from('notificaciones').delete().eq('remate_id', remateId)
+    await supabase.from('favoritos').delete().eq('remate_id', remateId)
+    await supabase.from('pujas').delete().eq('remate_id', remateId)
+    await supabase.from('remates').delete().eq('id', remateId)
+    cargarDatos()
+  }
+
   async function aprobarVerificacion(usuarioId, nickname) {
     if (!confirm(`¿Aprobar manualmente la verificación de ${nickname}?`)) return
     const { error } = await supabase.from('usuarios').update({ celular_verificado: true }).eq('id', usuarioId)
@@ -444,14 +453,18 @@ export default function PanelAdmin() {
                         </a>
                         {r.activo
                           ? <button onClick={() => suspenderRemate(r.id)}
-                              style={{ padding:'6px 12px', background:'#FCEBEB', color:'#A32D2D', border:'1px solid #E24B4A', borderRadius:'8px', fontSize:'12px', cursor:'pointer' }}>
+                              style={{ padding:'6px 12px', background:'#FCEBEB', color:'#A32D2D', border:'1px solid #E24B4A', borderRadius:'8px', fontSize:'12px', cursor:'pointer', marginRight:'8px' }}>
                               Suspender
                             </button>
                           : <button onClick={() => activarRemate(r.id)}
-                              style={{ padding:'6px 12px', background:'#E1F5EE', color:'#085041', border:'1px solid #1D9E75', borderRadius:'8px', fontSize:'12px', cursor:'pointer' }}>
+                              style={{ padding:'6px 12px', background:'#E1F5EE', color:'#085041', border:'1px solid #1D9E75', borderRadius:'8px', fontSize:'12px', cursor:'pointer', marginRight:'8px' }}>
                               Activar
                             </button>
                         }
+                        <button onClick={() => eliminarRemate(r.id, r.titulo)}
+                          style={{ padding:'6px 10px', background:'#A32D2D', color:'white', border:'none', borderRadius:'8px', fontSize:'12px', cursor:'pointer' }}>
+                          🗑
+                        </button>
                       </div>
                     </div>
                   ))}
