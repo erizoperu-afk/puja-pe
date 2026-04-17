@@ -241,12 +241,16 @@ export default function PanelVendedor() {
     <main style={{ fontFamily:'sans-serif', background:'#f9f9f9', minHeight:'100vh' }}>
       <Navbar />
       <div style={{ maxWidth:'900px', margin:'0 auto', padding:'16px' }}>
-
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'16px' }}>
+<div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'16px' }}>
           <h1 style={{ fontSize:'20px', fontWeight:'500' }}>Mi panel vendedor</h1>
-          <a href='/vendedor/nuevo' style={{ padding:'8px 14px', background: creditos > 0 ? '#1D9E75' : '#ccc', color:'white', borderRadius:'8px', textDecoration:'none', fontSize:'13px', fontWeight:'500', pointerEvents: creditos > 0 ? 'auto' : 'none' }}>
-            + Publicar
-          </a>
+          <div style={{ display:'flex', gap:'8px' }}>
+            <a href='/' style={{ padding:'8px 14px', background:'#f5f5f5', color:'#666', borderRadius:'8px', textDecoration:'none', fontSize:'13px', fontWeight:'500', border:'1px solid #eee' }}>
+              Página Principal
+            </a>
+            <a href='/vendedor/nuevo' style={{ padding:'8px 14px', background: creditos > 0 ? '#1D9E75' : '#ccc', color:'white', borderRadius:'8px', textDecoration:'none', fontSize:'13px', fontWeight:'500', pointerEvents: creditos > 0 ? 'auto' : 'none' }}>
+              + Publicar
+            </a>
+          </div>
         </div>
 
         {rematesVendidos.length > 0 && (
