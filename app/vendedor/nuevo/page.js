@@ -1,8 +1,479 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../../supabase'
 import Navbar from '../../Navbar'
+
+const UBICACIONES = [
+  'AMAZONAS - BAGUA - BAGUA',
+  'AMAZONAS - BAGUA - ARAMANGO',
+  'AMAZONAS - BAGUA - COPALLIN',
+  'AMAZONAS - BAGUA - EL PARCO',
+  'AMAZONAS - BAGUA - IMAZA',
+  'AMAZONAS - BAGUA - LA PECA',
+  'AMAZONAS - BONGARA - JUMBILLA',
+  'AMAZONAS - BONGARA - CHISQUILLA',
+  'AMAZONAS - BONGARA - CHURUJA',
+  'AMAZONAS - BONGARA - COROSHA',
+  'AMAZONAS - BONGARA - CUISPES',
+  'AMAZONAS - BONGARA - FLORIDA',
+  'AMAZONAS - BONGARA - JAZÁN',
+  'AMAZONAS - BONGARA - RECTA',
+  'AMAZONAS - BONGARA - SAN CARLOS',
+  'AMAZONAS - BONGARA - SHIPASBAMBA',
+  'AMAZONAS - BONGARA - VALERA',
+  'AMAZONAS - BONGARA - YAMBRASBAMBA',
+  'AMAZONAS - CHACHAPOYAS - CHACHAPOYAS',
+  'AMAZONAS - CHACHAPOYAS - ASUNCION',
+  'AMAZONAS - CHACHAPOYAS - BALSAS',
+  'AMAZONAS - CHACHAPOYAS - CHETO',
+  'AMAZONAS - CHACHAPOYAS - CHILIQUIN',
+  'AMAZONAS - CHACHAPOYAS - CHUQUIBAMBA',
+  'AMAZONAS - CHACHAPOYAS - GRANADA',
+  'AMAZONAS - CHACHAPOYAS - HUANCAS',
+  'AMAZONAS - CHACHAPOYAS - LA JALCA',
+  'AMAZONAS - CHACHAPOYAS - LEIMEBAMBA',
+  'AMAZONAS - CHACHAPOYAS - LEVANTO',
+  'AMAZONAS - CHACHAPOYAS - MAGDALENA',
+  'AMAZONAS - CHACHAPOYAS - MARISCAL CASTILLA',
+  'AMAZONAS - CHACHAPOYAS - MOLINOPAMPA',
+  'AMAZONAS - CHACHAPOYAS - MONTEVIDEO',
+  'AMAZONAS - CHACHAPOYAS - OLLEROS',
+  'AMAZONAS - CHACHAPOYAS - QUINJALCA',
+  'AMAZONAS - CHACHAPOYAS - SAN FRANCISCO DE DAGUAS',
+  'AMAZONAS - CHACHAPOYAS - SAN ISIDRO DE MAINO',
+  'AMAZONAS - CHACHAPOYAS - SOLOCO',
+  'AMAZONAS - CHACHAPOYAS - SONCHE',
+  'ANCASH - HUARAZ - HUARAZ',
+  'ANCASH - HUARAZ - COCHABAMBA',
+  'ANCASH - HUARAZ - COLCABAMBA',
+  'ANCASH - HUARAZ - HUANCHAY',
+  'ANCASH - HUARAZ - INDEPENDENCIA',
+  'ANCASH - HUARAZ - JANGAS',
+  'ANCASH - HUARAZ - LA LIBERTAD',
+  'ANCASH - HUARAZ - OLLEROS',
+  'ANCASH - HUARAZ - PAMPAS',
+  'ANCASH - HUARAZ - PARIA',
+  'ANCASH - HUARAZ - TARICA',
+  'ANCASH - SANTA - CHIMBOTE',
+  'ANCASH - SANTA - COISHCO',
+  'ANCASH - SANTA - MACATE',
+  'ANCASH - SANTA - MORO',
+  'ANCASH - SANTA - NEPEÑA',
+  'ANCASH - SANTA - NUEVO CHIMBOTE',
+  'ANCASH - SANTA - SAMANCO',
+  'ANCASH - SANTA - SANTA',
+  'APURIMAC - ABANCAY - ABANCAY',
+  'APURIMAC - ABANCAY - CHACOCHE',
+  'APURIMAC - ABANCAY - CIRCA',
+  'APURIMAC - ABANCAY - CURAHUASI',
+  'APURIMAC - ABANCAY - HUANIPACA',
+  'APURIMAC - ABANCAY - LAMBRAMA',
+  'APURIMAC - ABANCAY - PICHIRHUA',
+  'APURIMAC - ABANCAY - SAN PEDRO DE CACHORA',
+  'APURIMAC - ANDAHUAYLAS - ANDAHUAYLAS',
+  'APURIMAC - ANDAHUAYLAS - ANDARAPA',
+  'APURIMAC - ANDAHUAYLAS - CHIARA',
+  'APURIMAC - ANDAHUAYLAS - HUANCARAMA',
+  'APURIMAC - ANDAHUAYLAS - HUANCARAY',
+  'APURIMAC - ANDAHUAYLAS - KAQUIABAMBA',
+  'APURIMAC - ANDAHUAYLAS - KISHUARA',
+  'APURIMAC - ANDAHUAYLAS - PACOBAMBA',
+  'APURIMAC - ANDAHUAYLAS - PACUCHA',
+  'APURIMAC - ANDAHUAYLAS - PAMPACHIRI',
+  'APURIMAC - ANDAHUAYLAS - POMACOCHA',
+  'APURIMAC - ANDAHUAYLAS - SAN ANTONIO DE CACHI',
+  'APURIMAC - ANDAHUAYLAS - SAN JERÓNIMO',
+  'APURIMAC - ANDAHUAYLAS - SAN MIGUEL DE CHACCRAMPA',
+  'APURIMAC - ANDAHUAYLAS - SANTA MARIA DE CHICMO',
+  'APURIMAC - ANDAHUAYLAS - TALAVERA',
+  'APURIMAC - ANDAHUAYLAS - TUMAY HUARACA',
+  'APURIMAC - ANDAHUAYLAS - TURPO',
+  'AREQUIPA - AREQUIPA - AREQUIPA',
+  'AREQUIPA - AREQUIPA - ALTO SELVA ALEGRE',
+  'AREQUIPA - AREQUIPA - CAYMA',
+  'AREQUIPA - AREQUIPA - CERRO COLORADO',
+  'AREQUIPA - AREQUIPA - CHARACATO',
+  'AREQUIPA - AREQUIPA - CHIGUATA',
+  'AREQUIPA - AREQUIPA - JACOBO HUNTER',
+  'AREQUIPA - AREQUIPA - LA JOYA',
+  'AREQUIPA - AREQUIPA - MARIANO MELGAR',
+  'AREQUIPA - AREQUIPA - MIRAFLORES',
+  'AREQUIPA - AREQUIPA - MOLLEBAYA',
+  'AREQUIPA - AREQUIPA - PAUCARPATA',
+  'AREQUIPA - AREQUIPA - POCSI',
+  'AREQUIPA - AREQUIPA - POLOBAYA',
+  'AREQUIPA - AREQUIPA - QUEQUEÑA',
+  'AREQUIPA - AREQUIPA - SABANDIA',
+  'AREQUIPA - AREQUIPA - SACHACA',
+  'AREQUIPA - AREQUIPA - SAN JUAN DE SIGUAS',
+  'AREQUIPA - AREQUIPA - SAN JUAN DE TARUCANI',
+  'AREQUIPA - AREQUIPA - SANTA ISABEL DE SIGUAS',
+  'AREQUIPA - AREQUIPA - SANTA RITA DE SIGUAS',
+  'AREQUIPA - AREQUIPA - SOCABAYA',
+  'AREQUIPA - AREQUIPA - TIABAYA',
+  'AREQUIPA - AREQUIPA - UCHUMAYO',
+  'AREQUIPA - AREQUIPA - VITOR',
+  'AREQUIPA - AREQUIPA - YANAHUARA',
+  'AREQUIPA - AREQUIPA - YARABAMBA',
+  'AREQUIPA - AREQUIPA - YURA',
+  'AYACUCHO - HUAMANGA - AYACUCHO',
+  'AYACUCHO - HUAMANGA - ACOCRO',
+  'AYACUCHO - HUAMANGA - ACOS VINCHOS',
+  'AYACUCHO - HUAMANGA - CARMEN ALTO',
+  'AYACUCHO - HUAMANGA - CHIARA',
+  'AYACUCHO - HUAMANGA - JESUS NAZARENO',
+  'AYACUCHO - HUAMANGA - OCROS',
+  'AYACUCHO - HUAMANGA - PACAYCASA',
+  'AYACUCHO - HUAMANGA - QUINUA',
+  'AYACUCHO - HUAMANGA - SAN JOSE DE TICLLAS',
+  'AYACUCHO - HUAMANGA - SAN JUAN BAUTISTA',
+  'AYACUCHO - HUAMANGA - SANTIAGO DE PISCHA',
+  'AYACUCHO - HUAMANGA - SOCOS',
+  'AYACUCHO - HUAMANGA - TAMBILLO',
+  'AYACUCHO - HUAMANGA - VINCHOS',
+  'CAJAMARCA - CAJAMARCA - CAJAMARCA',
+  'CAJAMARCA - CAJAMARCA - ASUNCION',
+  'CAJAMARCA - CAJAMARCA - CHETILLA',
+  'CAJAMARCA - CAJAMARCA - COSPAN',
+  'CAJAMARCA - CAJAMARCA - ENCAÑADA',
+  'CAJAMARCA - CAJAMARCA - JESUS',
+  'CAJAMARCA - CAJAMARCA - LLACANORA',
+  'CAJAMARCA - CAJAMARCA - LOS BAÑOS DEL INCA',
+  'CAJAMARCA - CAJAMARCA - MAGDALENA',
+  'CAJAMARCA - CAJAMARCA - MATARA',
+  'CAJAMARCA - CAJAMARCA - NAMORA',
+  'CAJAMARCA - CAJAMARCA - SAN JUAN',
+  'CALLAO - CALLAO - BELLAVISTA',
+  'CALLAO - CALLAO - CALLAO',
+  'CALLAO - CALLAO - CARMEN DE LA LEGUA REYNOSO',
+  'CALLAO - CALLAO - LA PERLA',
+  'CALLAO - CALLAO - LA PUNTA',
+  'CALLAO - CALLAO - MI PERU',
+  'CALLAO - CALLAO - VENTANILLA',
+  'CUSCO - CUSCO - CUSCO',
+  'CUSCO - CUSCO - CCORCA',
+  'CUSCO - CUSCO - POROY',
+  'CUSCO - CUSCO - SAN JERÓNIMO',
+  'CUSCO - CUSCO - SAN SEBASTIÁN',
+  'CUSCO - CUSCO - SANTIAGO',
+  'CUSCO - CUSCO - SAYLLA',
+  'CUSCO - CUSCO - WANCHAQ',
+  'CUSCO - LA CONVENCION - SANTA ANA',
+  'CUSCO - LA CONVENCION - ECHARATE',
+  'CUSCO - LA CONVENCION - HUAYOPATA',
+  'CUSCO - LA CONVENCION - MARANURA',
+  'CUSCO - LA CONVENCION - OCOBAMBA',
+  'CUSCO - LA CONVENCION - QUELLOUNO',
+  'CUSCO - LA CONVENCION - VILCABAMBA',
+  'HUANCAVELICA - HUANCAVELICA - HUANCAVELICA',
+  'HUANCAVELICA - HUANCAVELICA - ACOBAMBILLA',
+  'HUANCAVELICA - HUANCAVELICA - ACORIA',
+  'HUANCAVELICA - HUANCAVELICA - CONAYCA',
+  'HUANCAVELICA - HUANCAVELICA - CUENCA',
+  'HUANCAVELICA - HUANCAVELICA - HUACHOCOLPA',
+  'HUANCAVELICA - HUANCAVELICA - HUAYLLAHUARA',
+  'HUANCAVELICA - HUANCAVELICA - IZCUCHACA',
+  'HUANCAVELICA - HUANCAVELICA - LARIA',
+  'HUANCAVELICA - HUANCAVELICA - MANTA',
+  'HUANCAVELICA - HUANCAVELICA - MARISCAL CACERES',
+  'HUANCAVELICA - HUANCAVELICA - MOYA',
+  'HUANCAVELICA - HUANCAVELICA - NUEVO OCCORO',
+  'HUANCAVELICA - HUANCAVELICA - PALCA',
+  'HUANCAVELICA - HUANCAVELICA - VILCA',
+  'HUANUCO - HUANUCO - HUANUCO',
+  'HUANUCO - HUANUCO - AMARILIS',
+  'HUANUCO - HUANUCO - CHINCHAO',
+  'HUANUCO - HUANUCO - CHURUBAMBA',
+  'HUANUCO - HUANUCO - MARGOS',
+  'HUANUCO - HUANUCO - PILLCO MARCA',
+  'HUANUCO - HUANUCO - QUISQUI',
+  'HUANUCO - HUANUCO - SAN FRANCISCO DE CAYRAN',
+  'HUANUCO - HUANUCO - SAN PEDRO DE CHAULAN',
+  'HUANUCO - HUANUCO - SANTA MARIA DEL VALLE',
+  'HUANUCO - HUANUCO - YARUMAYO',
+  'ICA - ICA - ICA',
+  'ICA - ICA - LA TINGUIÑA',
+  'ICA - ICA - LOS AQUIJES',
+  'ICA - ICA - OCUCAJE',
+  'ICA - ICA - PACHACUTEC',
+  'ICA - ICA - PARCONA',
+  'ICA - ICA - PUEBLO NUEVO',
+  'ICA - ICA - SALAS',
+  'ICA - ICA - SAN JOSE DE LOS MOLINOS',
+  'ICA - ICA - SAN JUAN BAUTISTA',
+  'ICA - ICA - SANTIAGO',
+  'ICA - ICA - SUBTANJALLA',
+  'ICA - ICA - TATE',
+  'ICA - ICA - YAUCA DEL ROSARIO',
+  'ICA - CHINCHA - CHINCHA ALTA',
+  'ICA - CHINCHA - ALTO LARAN',
+  'ICA - CHINCHA - CHAVÍN',
+  'ICA - CHINCHA - EL CARMEN',
+  'ICA - CHINCHA - GROCIO PRADO',
+  'ICA - CHINCHA - PUEBLO NUEVO',
+  'ICA - CHINCHA - SAN JUAN DE YANAC',
+  'ICA - CHINCHA - SAN PEDRO DE HUACARPANA',
+  'ICA - CHINCHA - SUNAMPE',
+  'ICA - CHINCHA - TAMBO DE MORA',
+  'ICA - NAZCA - NAZCA',
+  'ICA - NAZCA - CHANGUILLO',
+  'ICA - NAZCA - EL INGENIO',
+  'ICA - NAZCA - MARCONA',
+  'ICA - NAZCA - VISTA ALEGRE',
+  'ICA - PISCO - PISCO',
+  'ICA - PISCO - HUANCANO',
+  'ICA - PISCO - HUMAY',
+  'ICA - PISCO - INDEPENDENCIA',
+  'ICA - PISCO - PARACAS',
+  'ICA - PISCO - SAN ANDRES',
+  'ICA - PISCO - SAN CLEMENTE',
+  'ICA - PISCO - TUPAC AMARU INCA',
+  'JUNIN - HUANCAYO - HUANCAYO',
+  'JUNIN - HUANCAYO - CARHUACALLANGA',
+  'JUNIN - HUANCAYO - CHACAPAMPA',
+  'JUNIN - HUANCAYO - CHICCHE',
+  'JUNIN - HUANCAYO - CHILCA',
+  'JUNIN - HUANCAYO - CHONGOS ALTO',
+  'JUNIN - HUANCAYO - CHUPURO',
+  'JUNIN - HUANCAYO - COLCA',
+  'JUNIN - HUANCAYO - CULLHUAS',
+  'JUNIN - HUANCAYO - EL TAMBO',
+  'JUNIN - HUANCAYO - HUACRAPUQUIO',
+  'JUNIN - HUANCAYO - HUALHUAS',
+  'JUNIN - HUANCAYO - HUANCAN',
+  'JUNIN - HUANCAYO - HUASICANCHA',
+  'JUNIN - HUANCAYO - HUAYUCACHI',
+  'JUNIN - HUANCAYO - INGENIO',
+  'JUNIN - HUANCAYO - PARIAHUANCA',
+  'JUNIN - HUANCAYO - PUCARA',
+  'JUNIN - HUANCAYO - QUILCAS',
+  'JUNIN - HUANCAYO - SAN AGUSTIN',
+  'JUNIN - HUANCAYO - SAN JERONIMO DE TUNAN',
+  'JUNIN - HUANCAYO - SAÑO',
+  'JUNIN - HUANCAYO - SAPALLANGA',
+  'JUNIN - HUANCAYO - SICAYA',
+  'JUNIN - HUANCAYO - VIQUES',
+  'LA LIBERTAD - TRUJILLO - TRUJILLO',
+  'LA LIBERTAD - TRUJILLO - EL PORVENIR',
+  'LA LIBERTAD - TRUJILLO - FLORENCIA DE MORA',
+  'LA LIBERTAD - TRUJILLO - HUANCHACO',
+  'LA LIBERTAD - TRUJILLO - LA ESPERANZA',
+  'LA LIBERTAD - TRUJILLO - LAREDO',
+  'LA LIBERTAD - TRUJILLO - MOCHE',
+  'LA LIBERTAD - TRUJILLO - POROTO',
+  'LA LIBERTAD - TRUJILLO - SALAVERRY',
+  'LA LIBERTAD - TRUJILLO - SIMBAL',
+  'LA LIBERTAD - TRUJILLO - VICTOR LARCO HERRERA',
+  'LAMBAYEQUE - CHICLAYO - CHICLAYO',
+  'LAMBAYEQUE - CHICLAYO - CAYALTI',
+  'LAMBAYEQUE - CHICLAYO - CHONGOYAPE',
+  'LAMBAYEQUE - CHICLAYO - ETEN',
+  'LAMBAYEQUE - CHICLAYO - ETEN PUERTO',
+  'LAMBAYEQUE - CHICLAYO - JOSE LEONARDO ORTIZ',
+  'LAMBAYEQUE - CHICLAYO - LA VICTORIA',
+  'LAMBAYEQUE - CHICLAYO - LAGUNAS',
+  'LAMBAYEQUE - CHICLAYO - MONSEFU',
+  'LAMBAYEQUE - CHICLAYO - NUEVA ARICA',
+  'LAMBAYEQUE - CHICLAYO - OYOTUN',
+  'LAMBAYEQUE - CHICLAYO - PATAPO',
+  'LAMBAYEQUE - CHICLAYO - PIMENTEL',
+  'LAMBAYEQUE - CHICLAYO - POMALCA',
+  'LAMBAYEQUE - CHICLAYO - PUCALA',
+  'LAMBAYEQUE - CHICLAYO - REQUE',
+  'LAMBAYEQUE - CHICLAYO - SANTA ROSA',
+  'LAMBAYEQUE - CHICLAYO - SAÑA',
+  'LAMBAYEQUE - CHICLAYO - TUMAN',
+  'LIMA - LIMA - ATE',
+  'LIMA - LIMA - BARRANCO',
+  'LIMA - LIMA - BREÑA',
+  'LIMA - LIMA - CARABAYLLO',
+  'LIMA - LIMA - CHACLACAYO',
+  'LIMA - LIMA - CHORRILLOS',
+  'LIMA - LIMA - CIENEGUILLA',
+  'LIMA - LIMA - COMAS',
+  'LIMA - LIMA - EL AGUSTINO',
+  'LIMA - LIMA - INDEPENDENCIA',
+  'LIMA - LIMA - JESUS MARIA',
+  'LIMA - LIMA - LA MOLINA',
+  'LIMA - LIMA - LA VICTORIA',
+  'LIMA - LIMA - LINCE',
+  'LIMA - LIMA - LOS OLIVOS',
+  'LIMA - LIMA - LURIGANCHO',
+  'LIMA - LIMA - LURIN',
+  'LIMA - LIMA - MAGDALENA DEL MAR',
+  'LIMA - LIMA - MIRAFLORES',
+  'LIMA - LIMA - PACHACAMAC',
+  'LIMA - LIMA - PUCUSANA',
+  'LIMA - LIMA - PUEBLO LIBRE',
+  'LIMA - LIMA - PUENTE PIEDRA',
+  'LIMA - LIMA - PUNTA HERMOSA',
+  'LIMA - LIMA - PUNTA NEGRA',
+  'LIMA - LIMA - RIMAC',
+  'LIMA - LIMA - SAN BARTOLO',
+  'LIMA - LIMA - SAN BORJA',
+  'LIMA - LIMA - SAN ISIDRO',
+  'LIMA - LIMA - SAN JUAN DE LURIGANCHO',
+  'LIMA - LIMA - SAN JUAN DE MIRAFLORES',
+  'LIMA - LIMA - SAN LUIS',
+  'LIMA - LIMA - SAN MARTIN DE PORRES',
+  'LIMA - LIMA - SAN MIGUEL',
+  'LIMA - LIMA - SANTA ANITA',
+  'LIMA - LIMA - SANTA MARIA DEL MAR',
+  'LIMA - LIMA - SANTA ROSA',
+  'LIMA - LIMA - SANTIAGO DE SURCO',
+  'LIMA - LIMA - SURQUILLO',
+  'LIMA - LIMA - VILLA EL SALVADOR',
+  'LIMA - LIMA - VILLA MARIA DEL TRIUNFO',
+  'LIMA - BARRANCA - BARRANCA',
+  'LIMA - BARRANCA - PARAMONGA',
+  'LIMA - BARRANCA - PATIVILCA',
+  'LIMA - BARRANCA - SUPE',
+  'LIMA - BARRANCA - SUPE PUERTO',
+  'LIMA - CAÑETE - SAN VICENTE DE CAÑETE',
+  'LIMA - CAÑETE - ASIA',
+  'LIMA - CAÑETE - CALANGO',
+  'LIMA - CAÑETE - CERRO AZUL',
+  'LIMA - CAÑETE - CHILCA',
+  'LIMA - CAÑETE - COAYLLO',
+  'LIMA - CAÑETE - IMPERIAL',
+  'LIMA - CAÑETE - LUNAHUANA',
+  'LIMA - CAÑETE - MALA',
+  'LIMA - CAÑETE - NUEVO IMPERIAL',
+  'LIMA - CAÑETE - PACARAN',
+  'LIMA - CAÑETE - QUILMANA',
+  'LIMA - CAÑETE - SAN ANTONIO',
+  'LIMA - CAÑETE - SAN LUIS',
+  'LIMA - CAÑETE - SANTA CRUZ DE FLORES',
+  'LIMA - CAÑETE - ZUÑIGA',
+  'LIMA - HUARAL - HUARAL',
+  'LIMA - HUARAL - ATAVILLOS ALTO',
+  'LIMA - HUARAL - ATAVILLOS BAJO',
+  'LIMA - HUARAL - AUCALLAMA',
+  'LIMA - HUARAL - CHANCAY',
+  'LIMA - HUARAL - IHUARI',
+  'LIMA - HUARAL - LAMPIAN',
+  'LIMA - HUARAL - PACARAOS',
+  'LIMA - HUARAL - SAN MIGUEL DE ACOS',
+  'LIMA - HUARAL - SANTA CRUZ DE ANDAMARCA',
+  'LIMA - HUARAL - SUMBILCA',
+  'LIMA - HUARAL - VEINTISIETE DE NOVIEMBRE',
+  'LORETO - MAYNAS - IQUITOS',
+  'LORETO - MAYNAS - ALTO NANAY',
+  'LORETO - MAYNAS - FERNANDO LORES',
+  'LORETO - MAYNAS - INDIANA',
+  'LORETO - MAYNAS - LAS AMAZONAS',
+  'LORETO - MAYNAS - MAZAN',
+  'LORETO - MAYNAS - NAPO',
+  'LORETO - MAYNAS - PUNCHANA',
+  'LORETO - MAYNAS - TORRES CAUSANA',
+  'LORETO - MAYNAS - BELEN',
+  'LORETO - MAYNAS - SAN JUAN BAUTISTA',
+  'MADRE DE DIOS - TAMBOPATA - PUERTO MALDONADO',
+  'MADRE DE DIOS - TAMBOPATA - INAMBARI',
+  'MADRE DE DIOS - TAMBOPATA - LAS PIEDRAS',
+  'MADRE DE DIOS - TAMBOPATA - LABERINTO',
+  'MADRE DE DIOS - MANU - MANU',
+  'MADRE DE DIOS - MANU - FITZCARRALD',
+  'MADRE DE DIOS - MANU - MADRE DE DIOS',
+  'MADRE DE DIOS - MANU - HUEPETUHE',
+  'MOQUEGUA - MARISCAL NIETO - MOQUEGUA',
+  'MOQUEGUA - MARISCAL NIETO - CARUMAS',
+  'MOQUEGUA - MARISCAL NIETO - CUCHUMBAYA',
+  'MOQUEGUA - MARISCAL NIETO - SAMEGUA',
+  'MOQUEGUA - MARISCAL NIETO - SAN CRISTOBAL',
+  'MOQUEGUA - MARISCAL NIETO - TORATA',
+  'MOQUEGUA - ILO - ILO',
+  'MOQUEGUA - ILO - EL ALGARROBAL',
+  'MOQUEGUA - ILO - PACOCHA',
+  'PASCO - PASCO - CHAUPIMARCA',
+  'PASCO - PASCO - HUACHON',
+  'PASCO - PASCO - HUARIACA',
+  'PASCO - PASCO - HUAYLLAY',
+  'PASCO - PASCO - NINACACA',
+  'PASCO - PASCO - PALLANCHACRA',
+  'PASCO - PASCO - PAUCARTAMBO',
+  'PASCO - PASCO - SAN FRANCISCO DE ASIS DE YARUSYACAN',
+  'PASCO - PASCO - SIMON BOLIVAR',
+  'PASCO - PASCO - TICLACAYAN',
+  'PASCO - PASCO - TINYAHUARCO',
+  'PASCO - PASCO - VICCO',
+  'PASCO - PASCO - YANACANCHA',
+  'PIURA - PIURA - PIURA',
+  'PIURA - PIURA - CASTILLA',
+  'PIURA - PIURA - CATACAOS',
+  'PIURA - PIURA - CURA MORI',
+  'PIURA - PIURA - EL TALLAN',
+  'PIURA - PIURA - LA ARENA',
+  'PIURA - PIURA - LA UNION',
+  'PIURA - PIURA - LAS LOMAS',
+  'PIURA - PIURA - TAMBO GRANDE',
+  'PIURA - PIURA - VEINTISÉIS DE OCTUBRE',
+  'PIURA - SULLANA - SULLANA',
+  'PIURA - SULLANA - BELLAVISTA',
+  'PIURA - SULLANA - IGNACIO ESCUDERO',
+  'PIURA - SULLANA - LANCONES',
+  'PIURA - SULLANA - MARCAVELICA',
+  'PIURA - SULLANA - MIGUEL CHECA',
+  'PIURA - SULLANA - QUERECOTILLO',
+  'PIURA - SULLANA - SALITRAL',
+  'PIURA - TUMBES - TUMBES',
+  'PUNO - PUNO - PUNO',
+  'PUNO - PUNO - ACORA',
+  'PUNO - PUNO - AMANTANI',
+  'PUNO - PUNO - ATUNCOLLA',
+  'PUNO - PUNO - CAPACHICA',
+  'PUNO - PUNO - CHUCUITO',
+  'PUNO - PUNO - COATA',
+  'PUNO - PUNO - HUATA',
+  'PUNO - PUNO - MAÑAZO',
+  'PUNO - PUNO - PICHACANI',
+  'PUNO - PUNO - PLATERIA',
+  'PUNO - PUNO - SAN ANTONIO',
+  'PUNO - PUNO - TIQUILLACA',
+  'PUNO - PUNO - VILQUE',
+  'PUNO - JULIACA - JULIACA',
+  'PUNO - SAN ROMAN - CABANA',
+  'PUNO - SAN ROMAN - CALAPUJA',
+  'PUNO - SAN ROMAN - CARACOTO',
+  'SAN MARTIN - SAN MARTIN - TARAPOTO',
+  'SAN MARTIN - SAN MARTIN - ALBERTO LEVEAU',
+  'SAN MARTIN - SAN MARTIN - CACATACHI',
+  'SAN MARTIN - SAN MARTIN - CHAZUTA',
+  'SAN MARTIN - SAN MARTIN - CHIPURANA',
+  'SAN MARTIN - SAN MARTIN - EL PORVENIR',
+  'SAN MARTIN - SAN MARTIN - HUIMBAYOC',
+  'SAN MARTIN - SAN MARTIN - JUAN GUERRA',
+  'SAN MARTIN - SAN MARTIN - LA BANDA DE SHILCAYO',
+  'SAN MARTIN - SAN MARTIN - MORALES',
+  'SAN MARTIN - SAN MARTIN - PAPAPLAYA',
+  'SAN MARTIN - SAN MARTIN - SAN ANTONIO',
+  'SAN MARTIN - SAN MARTIN - SAUCE',
+  'SAN MARTIN - SAN MARTIN - SHAPAJA',
+  'TACNA - TACNA - TACNA',
+  'TACNA - TACNA - ALTO DE LA ALIANZA',
+  'TACNA - TACNA - CALANA',
+  'TACNA - TACNA - CIUDAD NUEVA',
+  'TACNA - TACNA - INCLAN',
+  'TACNA - TACNA - PACHIA',
+  'TACNA - TACNA - PALCA',
+  'TACNA - TACNA - POCOLLAY',
+  'TACNA - TACNA - SAMA',
+  'TACNA - TACNA - CORONEL GREGORIO ALBARRACIN LANCHIPA',
+  'TUMBES - TUMBES - TUMBES',
+  'TUMBES - TUMBES - CORRALES',
+  'TUMBES - TUMBES - LA CRUZ',
+  'TUMBES - TUMBES - PAMPAS DE HOSPITAL',
+  'TUMBES - TUMBES - SAN JACINTO',
+  'TUMBES - TUMBES - SAN JUAN DE LA VIRGEN',
+  'UCAYALI - CORONEL PORTILLO - CALLERIA',
+  'UCAYALI - CORONEL PORTILLO - CAMPOVERDE',
+  'UCAYALI - CORONEL PORTILLO - IPARIA',
+  'UCAYALI - CORONEL PORTILLO - MASISEA',
+  'UCAYALI - CORONEL PORTILLO - YARINACOCHA',
+  'UCAYALI - CORONEL PORTILLO - NUEVA REQUENA',
+  'UCAYALI - CORONEL PORTILLO - MANANTAY',
+]
 
 export default function NuevoRemate() {
   const [tipo, setTipo] = useState('subasta')
@@ -22,16 +493,33 @@ export default function NuevoRemate() {
   const [mensaje, setMensaje] = useState('')
   const [error, setError] = useState('')
   const [errores, setErrores] = useState({})
+  const [busquedaUbicacion, setBusquedaUbicacion] = useState('')
+  const [mostrarDropdown, setMostrarDropdown] = useState(false)
+  const ubicacionRef = useRef(null)
+
+  const ubicacionesFiltradas = busquedaUbicacion.length >= 2
+    ? UBICACIONES.filter(u => u.toLowerCase().includes(busquedaUbicacion.toLowerCase())).slice(0, 20)
+    : []
 
   useEffect(() => {
     async function cargarCreditos() {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) return
       const { data: cred } = await supabase
-     .from('creditos').select('saldo').eq('usuario_id', session.user.id).maybeSingle()
+        .from('creditos').select('saldo').eq('usuario_id', session.user.id).maybeSingle()
       setCreditos(cred?.saldo ?? 0)
     }
     cargarCreditos()
+  }, [])
+
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (ubicacionRef.current && !ubicacionRef.current.contains(e.target)) {
+        setMostrarDropdown(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
   function handleChange(e) {
@@ -39,10 +527,18 @@ export default function NuevoRemate() {
     if (errores[e.target.name]) setErrores({ ...errores, [e.target.name]: '' })
   }
 
+  function seleccionarUbicacion(ubicacion) {
+    setForm({ ...form, ubicacion })
+    setBusquedaUbicacion(ubicacion)
+    setMostrarDropdown(false)
+    if (errores.ubicacion) setErrores({ ...errores, ubicacion: '' })
+  }
+
   function validar() {
     const nuevosErrores = {}
     if (!form.titulo.trim()) nuevosErrores.titulo = 'El título es obligatorio.'
     if (!form.categoria) nuevosErrores.categoria = 'La categoría es obligatoria.'
+    if (!form.ubicacion) nuevosErrores.ubicacion = 'La ubicación es obligatoria.'
     if (!form.precio_inicial) nuevosErrores.precio_inicial = 'El precio inicial es obligatorio.'
     if (fotos.length === 0) nuevosErrores.fotos = 'Agrega al menos 1 foto.'
     if (form.precio_directo && Number(form.precio_directo) < Number(form.precio_inicial)) {
@@ -130,17 +626,12 @@ export default function NuevoRemate() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            titulo: form.titulo,
-            precio: form.precio_inicial,
-            categoria: form.categoria,
-            imagen_url: imagen_url,
-            remate_id: nuevoRemate.id,
-            tipo: tipo
+            titulo: form.titulo, precio: form.precio_inicial,
+            categoria: form.categoria, imagen_url,
+            remate_id: nuevoRemate.id, tipo
           })
         })
-      } catch (e) {
-        console.log('Error publicando en Facebook:', e)
-      }
+      } catch (e) { console.log('Error publicando en Facebook:', e) }
     }
 
     if (programarInicio) {
@@ -153,7 +644,6 @@ export default function NuevoRemate() {
   }
 
   const sinCreditos = creditos !== null && creditos <= 0
-
   const hoy = new Date().toISOString().split('T')[0]
   const campo = { width:'100%', padding:'10px 12px', borderRadius:'8px', border:'1px solid #ddd', fontSize:'14px', marginTop:'5px', boxSizing:'border-box' }
   const campoError = { ...campo, border:'1px solid #E24B4A' }
@@ -173,15 +663,10 @@ export default function NuevoRemate() {
           <h1 style={{ fontSize:'18px', fontWeight:'500' }}>Publicar</h1>
         </div>
 
-        {/* AVISO SIN CREDITOS */}
         {sinCreditos && (
           <div style={{ background:'#FCEBEB', border:'1px solid #E24B4A', borderRadius:'12px', padding:'16px', marginBottom:'16px', textAlign:'center' }}>
-            <p style={{ fontSize:'15px', fontWeight:'500', color:'#A32D2D', marginBottom:'6px' }}>
-              😔 Te has quedado sin créditos
-            </p>
-            <p style={{ fontSize:'13px', color:'#A32D2D', marginBottom:'12px' }}>
-              Necesitas créditos para publicar. Recarga tu cuenta para continuar.
-            </p>
+            <p style={{ fontSize:'15px', fontWeight:'500', color:'#A32D2D', marginBottom:'6px' }}>Te has quedado sin créditos</p>
+            <p style={{ fontSize:'13px', color:'#A32D2D', marginBottom:'12px' }}>Necesitas créditos para publicar.</p>
             <a href='/vendedor' style={{ display:'inline-block', padding:'8px 20px', background:'#A32D2D', color:'white', borderRadius:'8px', textDecoration:'none', fontSize:'13px', fontWeight:'500' }}>
               Recargar créditos
             </a>
@@ -254,7 +739,7 @@ export default function NuevoRemate() {
           <div style={{ marginBottom:'12px' }}>
             <label style={{ fontSize:'12px', color:'#666' }}>Descripción</label>
             <textarea name='descripcion' value={form.descripcion} onChange={handleChange}
-              placeholder='Describe el estado, que incluye...' style={{ ...campo, height:'80px', resize:'vertical' }} />
+              placeholder='Describe el estado, qué incluye...' style={{ ...campo, height:'80px', resize:'vertical' }} />
           </div>
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px', marginBottom:'12px' }}>
             <div>
@@ -283,9 +768,41 @@ export default function NuevoRemate() {
               </select>
             </div>
           </div>
-          <div>
-            <label style={{ fontSize:'12px', color:'#666' }}>Ubicación</label>
-            <input name='ubicacion' value={form.ubicacion} onChange={handleChange} placeholder='Ej: Lima, Miraflores' style={campo} />
+
+          {/* UBICACION CON AUTOCOMPLETADO */}
+          <div ref={ubicacionRef} style={{ position:'relative' }}>
+            <label style={{ fontSize:'12px', color: errores.ubicacion ? '#A32D2D' : '#666' }}>Ubicación * <span style={{ color:'#999', fontWeight:'400' }}>(donde se encuentra el artículo)</span></label>
+            <input
+              value={busquedaUbicacion}
+              onChange={e => {
+                setBusquedaUbicacion(e.target.value)
+                setForm({ ...form, ubicacion: '' })
+                setMostrarDropdown(true)
+                if (errores.ubicacion) setErrores({ ...errores, ubicacion: '' })
+              }}
+              onFocus={() => setMostrarDropdown(true)}
+              placeholder='Escribe para buscar: Lima, Miraflores...'
+              style={errores.ubicacion ? campoError : campo}
+            />
+            {errores.ubicacion && <p style={textoError}>{errores.ubicacion}</p>}
+            {mostrarDropdown && ubicacionesFiltradas.length > 0 && (
+              <div style={{ position:'absolute', top:'100%', left:0, right:0, background:'#fff', border:'1px solid #ddd', borderRadius:'8px', boxShadow:'0 4px 12px rgba(0,0,0,0.1)', zIndex:100, maxHeight:'220px', overflowY:'auto' }}>
+                {ubicacionesFiltradas.map((u, i) => (
+                  <div key={i}
+                    onMouseDown={() => seleccionarUbicacion(u)}
+                    style={{ padding:'10px 14px', fontSize:'13px', cursor:'pointer', borderBottom:'1px solid #f5f5f5', color:'#333' }}
+                    onMouseEnter={e => e.target.style.background = '#E1F5EE'}
+                    onMouseLeave={e => e.target.style.background = '#fff'}>
+                    {u}
+                  </div>
+                ))}
+              </div>
+            )}
+            {mostrarDropdown && busquedaUbicacion.length >= 2 && ubicacionesFiltradas.length === 0 && (
+              <div style={{ position:'absolute', top:'100%', left:0, right:0, background:'#fff', border:'1px solid #ddd', borderRadius:'8px', padding:'12px', fontSize:'13px', color:'#999', zIndex:100 }}>
+                No se encontraron resultados
+              </div>
+            )}
           </div>
         </div>
 
@@ -339,7 +856,7 @@ export default function NuevoRemate() {
         <div style={{ background:'#fff', border:'1px solid #eee', borderRadius:'12px', padding:'16px', marginBottom:'16px' }}>
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom: programarInicio ? '14px' : '0' }}>
             <div>
-              <h2 style={{ fontSize:'14px', fontWeight:'500', marginBottom:'2px' }}>📅 Programar inicio</h2>
+              <h2 style={{ fontSize:'14px', fontWeight:'500', marginBottom:'2px' }}>Programar inicio</h2>
               <p style={{ fontSize:'12px', color:'#999' }}>Elige cuándo se activa tu publicación</p>
             </div>
             <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
@@ -366,16 +883,14 @@ export default function NuevoRemate() {
               </div>
               {form.fecha_inicio && form.hora_inicio && (
                 <div style={{ gridColumn:'1/-1', background:'#E1F5EE', borderRadius:'8px', padding:'10px', fontSize:'12px', color:'#085041' }}>
-                  ✅ Tu publicación se activará el {new Date(form.fecha_inicio + 'T' + form.hora_inicio).toLocaleDateString('es-PE', { weekday:'long', day:'numeric', month:'long', year:'numeric', hour:'2-digit', minute:'2-digit' })}
+                  Tu publicación se activará el {new Date(form.fecha_inicio + 'T' + form.hora_inicio).toLocaleDateString('es-PE', { weekday:'long', day:'numeric', month:'long', year:'numeric', hour:'2-digit', minute:'2-digit' })}
                 </div>
               )}
             </div>
           )}
         </div>
 
-        <button
-          onClick={publicar}
-          disabled={cargando || sinCreditos}
+        <button onClick={publicar} disabled={cargando || sinCreditos}
           style={{
             width:'100%', padding:'12px',
             background: sinCreditos ? '#ccc' : cargando ? '#9FE1CB' : '#1D9E75',
@@ -383,7 +898,7 @@ export default function NuevoRemate() {
             fontSize:'15px', fontWeight:'500',
             cursor: sinCreditos ? 'not-allowed' : 'pointer'
           }}>
-          {sinCreditos ? '😔 Sin créditos para publicar' : cargando ? 'Publicando...' : programarInicio ? '📅 Programar publicación' : tipo === 'subasta' ? 'Publicar subasta' : 'Publicar a precio fijo'}
+          {sinCreditos ? 'Sin créditos para publicar' : cargando ? 'Publicando...' : programarInicio ? 'Programar publicación' : tipo === 'subasta' ? 'Publicar subasta' : 'Publicar a precio fijo'}
         </button>
       </div>
     </main>
