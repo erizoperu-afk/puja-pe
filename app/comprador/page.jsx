@@ -162,7 +162,13 @@ export default function PanelComprador() {
     <main style={{ fontFamily:'sans-serif', background:'#f9f9f9', minHeight:'100vh' }}>
       <Navbar />
       <div style={{ maxWidth:'900px', margin:'0 auto', padding:'16px' }}>
-        <h1 style={{ fontSize:'20px', fontWeight:'500', marginBottom:'16px' }}>Mi panel comprador</h1>
+
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'16px' }}>
+          <h1 style={{ fontSize:'20px', fontWeight:'500' }}>Mi panel comprador</h1>
+          <a href='/' style={{ padding:'8px 14px', background:'#f5f5f5', color:'#666', borderRadius:'8px', textDecoration:'none', fontSize:'13px', fontWeight:'500', border:'1px solid #eee' }}>
+            Página Principal
+          </a>
+        </div>
 
         {/* BANNER GANADOS */}
         {ganados.length > 0 && (
