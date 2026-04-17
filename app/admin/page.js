@@ -136,6 +136,28 @@ export default function PanelAdmin() {
     cargarDatos()
   }
 
+  async function eliminarUsuario(usuarioId, nickname) {
+    if (!confirm(`¿Eliminar permanentemente al usuario "${nickname}"? Se eliminarán todos sus remates, pujas y datos. Esta acción no se puede deshacer.`)) return
+
+    const { data: rematesUsuario } = await supabase.from('remates').select('id').eq('vendedor_id', usuarioId)
+    const idsRemates = (rematesUsuario || []).map(r => r.id)
+
+    if (idsRemates.length > 0) {
+      await supabase.from('notificaciones').delete().in('remate_id', idsRemates)
+      await supabase.from('favoritos').delete().in('remate_id', idsRemates)
+      await supabase.from('pujas').delete().in('remate_id', idsRemates)
+      await supabase.from('remates').delete().in('id', idsRemates)
+    }
+    await supabase.from('pujas').delete().eq('usuario_id', usuarioId)
+    await supabase.from('favoritos').delete().eq('usuario_id', usuarioId)
+    await supabase.from('notificaciones').delete().eq('usuario_id', usuarioId)
+    await supabase.from('mensajes').delete().eq('usuario_id', usuarioId)
+    await supabase.from('creditos').delete().eq('usuario_id', usuarioId)
+    await supabase.from('usuarios').delete().eq('id', usuarioId)
+
+    cargarDatos()
+  }
+
   async function suspenderRemate(remateId) {
     await supabase.from('remates').update({ activo: false }).eq('id', remateId)
     cargarDatos()
@@ -332,6 +354,7 @@ export default function PanelAdmin() {
           ))}
         </div>
 
+        {/* USUARIOS */}
         {tab === 'usuarios' && (
           <div>
             {usuarios.length === 0
@@ -379,6 +402,10 @@ export default function PanelAdmin() {
                             style={{ padding:'6px 12px', background:'#FCEBEB', color:'#A32D2D', border:'1px solid #E24B4A', borderRadius:'8px', fontSize:'12px', cursor:'pointer' }}>
                             Suspender
                           </button>
+                          <button onClick={() => eliminarUsuario(u.id, u.nickname)}
+                            style={{ padding:'6px 10px', background:'#A32D2D', color:'white', border:'none', borderRadius:'8px', fontSize:'12px', cursor:'pointer' }}>
+                            🗑
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -389,6 +416,7 @@ export default function PanelAdmin() {
           </div>
         )}
 
+        {/* VERIFICACIONES */}
         {tab === 'verificaciones' && (
           <div>
             <p style={{ fontSize:'13px', color:'#999', marginBottom:'16px' }}>
@@ -423,6 +451,7 @@ export default function PanelAdmin() {
           </div>
         )}
 
+        {/* REMATES */}
         {tab === 'remates' && (
           <div>
             {remates.length === 0
@@ -469,6 +498,7 @@ export default function PanelAdmin() {
           </div>
         )}
 
+        {/* MENSAJES */}
         {tab === 'mensajes' && (
           <div>
             {mensajes.length === 0
@@ -529,6 +559,7 @@ export default function PanelAdmin() {
           </div>
         )}
 
+        {/* MODO BETA */}
         {tab === 'beta' && (
           <div style={estilo.card}>
             <h2 style={{ fontSize:'16px', fontWeight:'500', marginBottom:'16px' }}>Configuración del modo BETA</h2>
@@ -557,6 +588,7 @@ export default function PanelAdmin() {
           </div>
         )}
 
+        {/* PAQUETES */}
         {tab === 'paquetes' && (
           <div>
             <p style={{ fontSize:'13px', color:'#999', marginBottom:'16px' }}>Define los precios de los paquetes de créditos que los vendedores pueden comprar.</p>
