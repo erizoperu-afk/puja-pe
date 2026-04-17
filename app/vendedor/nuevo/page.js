@@ -715,13 +715,15 @@ export default function NuevoRemate() {
               <label style={{ width:'90px', height:'90px', border:'1px dashed #ddd', borderRadius:'8px', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', cursor:'pointer', background:'#f9f9f9', fontSize:'12px', color:'#999' }}>
                 <span style={{ fontSize:'24px', marginBottom:'4px' }}>+</span>
                 Agregar
-                <input type='file' accept='image/*' style={{ display:'none' }} onChange={(e) => {
-                  const archivo = e.target.files[0]
-                  if (!archivo || fotos.length >= 3) return
-                  setFotos([...fotos, archivo])
-                  setFotosUrl([...fotosUrl, URL.createObjectURL(archivo)])
-                  if (errores.fotos) setErrores({ ...errores, fotos: '' })
-                }} />
+                <input type='file' accept='image/*' multiple style={{ display:'none' }} onChange={(e) => {
+  const archivos = Array.from(e.target.files)
+  const disponibles = 3 - fotos.length
+  const nuevos = archivos.slice(0, disponibles)
+  if (nuevos.length === 0) return
+  setFotos([...fotos, ...nuevos])
+  setFotosUrl([...fotosUrl, ...nuevos.map(f => URL.createObjectURL(f))])
+  if (errores.fotos) setErrores({ ...errores, fotos: '' })
+}} />
               </label>
             )}
           </div>
