@@ -6,6 +6,11 @@ import Navbar from '../Navbar'
 
 const POR_PAGINA = 6
 
+const CATEGORIAS = [
+  'Antiguedades', 'Coleccionables', 'Electronica', 'Filatelia',
+  'Juguetes', 'Numismatica', 'Relojes', 'Ropa y accesorios', 'Otros'
+]
+
 export default function PanelVendedor() {
   const [remates, setRemates] = useState([])
   const [pujasXRemate, setPujasXRemate] = useState({})
@@ -95,6 +100,7 @@ export default function PanelVendedor() {
     await supabase.from('remates').update({
       titulo: formEditarActivo.titulo,
       descripcion: formEditarActivo.descripcion,
+      categoria: formEditarActivo.categoria,
       precio_inicial: Number(formEditarActivo.precio_inicial),
       precio_actual: Number(formEditarActivo.precio_inicial),
     }).eq('id', remateId)
@@ -122,7 +128,9 @@ export default function PanelVendedor() {
     const fechaFin = new Date()
     fechaFin.setDate(fechaFin.getDate() + 3)
     await supabase.from('remates').update({
-      titulo: formEditar.titulo, descripcion: formEditar.descripcion,
+      titulo: formEditar.titulo,
+      descripcion: formEditar.descripcion,
+      categoria: formEditar.categoria,
       precio_inicial: Number(formEditar.precio_inicial),
       precio_actual: Number(formEditar.precio_inicial),
       activo: true, fecha_fin: fechaFin.toISOString(), comprador_id: null
@@ -139,7 +147,8 @@ export default function PanelVendedor() {
   const rematesVendidos    = remates.filter(r => estadoRemate(r) === 'vendido')
   const rematesSinOferta   = remates.filter(r => estadoRemate(r) === 'sin_oferta')
 
-  const campo = { width:'100%', padding:'8px 10px', borderRadius:'8px', border:'1px solid #ddd', fontSize:'13px', boxSizing:'border-box', marginBottom:'8px' }
+  const label = { fontSize:'11px', color:'#666', display:'block', marginBottom:'3px', fontWeight:'500' }
+  const campo = { width:'100%', padding:'8px 10px', borderRadius:'8px', border:'1px solid #ddd', fontSize:'13px', boxSizing:'border-box' }
 
   const badges = {
     activo:     { texto:'Activo',      bg:'#E1F5EE', color:'#085041' },
@@ -310,7 +319,7 @@ export default function PanelVendedor() {
                   {/* ACTIVO SIN PUJAS — botones editar/cancelar */}
                   {puedeEditar && !esEditandoEsteActivo && (
                     <div style={{ marginTop:'12px', paddingTop:'12px', borderTop:'1px solid #f0f0f0', display:'flex', gap:'8px', flexWrap:'wrap' }}>
-                      <button onClick={() => { setEditandoActivo(r.id); setFormEditarActivo({ titulo: r.titulo, descripcion: r.descripcion, precio_inicial: r.precio_inicial }) }}
+                      <button onClick={() => { setEditandoActivo(r.id); setFormEditarActivo({ titulo: r.titulo, descripcion: r.descripcion, categoria: r.categoria, precio_inicial: r.precio_inicial }) }}
                         style={{ flex:1, padding:'8px', borderRadius:'8px', border:'1px solid #1D9E75', background:'transparent', fontSize:'12px', cursor:'pointer', color:'#1D9E75', minWidth:'140px' }}>
                         Modificar publicación
                       </button>
@@ -325,25 +334,31 @@ export default function PanelVendedor() {
                   {puedeEditar && esEditandoEsteActivo && (
                     <div style={{ marginTop:'12px', paddingTop:'12px', borderTop:'1px solid #f0f0f0' }}>
                       <div style={{ background:'#f9f9f9', borderRadius:'8px', padding:'12px' }}>
-                        <p style={{ fontSize:'12px', fontWeight:'500', color:'#444', marginBottom:'8px' }}>Modificar publicación — sin costo de crédito</p>
-                        <input
-                          value={formEditarActivo.titulo}
-                          onChange={e => setFormEditarActivo(prev => ({...prev, titulo: e.target.value}))}
-                          placeholder='Título' style={campo} />
-                        <textarea
-                          value={formEditarActivo.descripcion}
-                          onChange={e => setFormEditarActivo(prev => ({...prev, descripcion: e.target.value}))}
-                          placeholder='Descripción' style={{ ...campo, height:'60px', resize:'vertical' }} />
-                        <input
-                          type='number'
-                          value={formEditarActivo.precio_inicial}
-                          onChange={e => setFormEditarActivo(prev => ({...prev, precio_inicial: e.target.value}))}
-                          placeholder='Precio (S/)' style={campo} />
+                        <p style={{ fontSize:'12px', fontWeight:'500', color:'#444', marginBottom:'12px' }}>Modificar publicación — sin costo de crédito</p>
+                        <div style={{ marginBottom:'10px' }}>
+                          <label style={label}>Título</label>
+                          <input value={formEditarActivo.titulo} onChange={e => setFormEditarActivo(prev => ({...prev, titulo: e.target.value}))} placeholder='Título del artículo' style={campo} />
+                        </div>
+                        <div style={{ marginBottom:'10px' }}>
+                          <label style={label}>Descripción</label>
+                          <textarea value={formEditarActivo.descripcion} onChange={e => setFormEditarActivo(prev => ({...prev, descripcion: e.target.value}))} placeholder='Descripción del artículo' style={{ ...campo, height:'60px', resize:'vertical' }} />
+                        </div>
+                        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px', marginBottom:'10px' }}>
+                          <div>
+                            <label style={label}>Categoría</label>
+                            <select value={formEditarActivo.categoria || ''} onChange={e => setFormEditarActivo(prev => ({...prev, categoria: e.target.value}))} style={campo}>
+                              <option value=''>Selecciona categoría</option>
+                              {CATEGORIAS.map(c => <option key={c} value={c}>{c}</option>)}
+                            </select>
+                          </div>
+                          <div>
+                            <label style={label}>Precio (S/)</label>
+                            <input type='number' value={formEditarActivo.precio_inicial} onChange={e => setFormEditarActivo(prev => ({...prev, precio_inicial: e.target.value}))} placeholder='Precio' style={campo} />
+                          </div>
+                        </div>
+                        <p style={{ fontSize:'11px', color:'#999', marginBottom:'10px' }}>La ubicación no puede modificarse una vez publicado.</p>
                         <div style={{ display:'flex', gap:'8px' }}>
-                          <button onClick={() => setEditandoActivo(null)}
-                            style={{ flex:1, padding:'8px', borderRadius:'8px', border:'1px solid #ddd', background:'transparent', fontSize:'13px', cursor:'pointer', color:'#666' }}>
-                            Cancelar
-                          </button>
+                          <button onClick={() => setEditandoActivo(null)} style={{ flex:1, padding:'8px', borderRadius:'8px', border:'1px solid #ddd', background:'transparent', fontSize:'13px', cursor:'pointer', color:'#666' }}>Cancelar</button>
                           <button onClick={() => guardarCambiosActivo(r.id)} disabled={guardandoActivo}
                             style={{ flex:1, padding:'8px', borderRadius:'8px', border:'none', background:'#1D9E75', color:'white', fontSize:'13px', cursor:'pointer', fontWeight:'500' }}>
                             {guardandoActivo ? 'Guardando...' : 'Guardar cambios'}
@@ -353,7 +368,7 @@ export default function PanelVendedor() {
                     </div>
                   )}
 
-                  {/* ACTIVO CON PUJAS — no puede editar */}
+                  {/* ACTIVO CON PUJAS */}
                   {estado === 'activo' && numPujas > 0 && (
                     <div style={{ marginTop:'10px', paddingTop:'10px', borderTop:'1px solid #f0f0f0' }}>
                       <p style={{ fontSize:'11px', color:'#999' }}>Esta publicación tiene {numPujas} {numPujas === 1 ? 'puja' : 'pujas'} — no puede modificarse ni cancelarse.</p>
@@ -406,10 +421,28 @@ export default function PanelVendedor() {
                       <p style={{ fontSize:'12px', color:'#999', marginBottom:'8px' }}>Esta publicación concluyó sin recibir ofertas.</p>
                       {esEditandoEsteSinOferta ? (
                         <div style={{ background:'#f9f9f9', borderRadius:'8px', padding:'12px' }}>
-                          <p style={{ fontSize:'12px', fontWeight:'500', color:'#444', marginBottom:'8px' }}>Editar y republicar — consume 1 crédito</p>
-                          <input value={formEditar.titulo} onChange={e => setFormEditar(prev => ({...prev, titulo: e.target.value}))} placeholder='Título' style={campo} />
-                          <textarea value={formEditar.descripcion} onChange={e => setFormEditar(prev => ({...prev, descripcion: e.target.value}))} placeholder='Descripción' style={{ ...campo, height:'60px', resize:'vertical' }} />
-                          <input type='number' value={formEditar.precio_inicial} onChange={e => setFormEditar(prev => ({...prev, precio_inicial: e.target.value}))} placeholder='Nuevo precio (S/)' style={campo} />
+                          <p style={{ fontSize:'12px', fontWeight:'500', color:'#444', marginBottom:'12px' }}>Editar y republicar — consume 1 crédito</p>
+                          <div style={{ marginBottom:'10px' }}>
+                            <label style={label}>Título</label>
+                            <input value={formEditar.titulo} onChange={e => setFormEditar(prev => ({...prev, titulo: e.target.value}))} placeholder='Título del artículo' style={campo} />
+                          </div>
+                          <div style={{ marginBottom:'10px' }}>
+                            <label style={label}>Descripción</label>
+                            <textarea value={formEditar.descripcion} onChange={e => setFormEditar(prev => ({...prev, descripcion: e.target.value}))} placeholder='Descripción del artículo' style={{ ...campo, height:'60px', resize:'vertical' }} />
+                          </div>
+                          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px', marginBottom:'10px' }}>
+                            <div>
+                              <label style={label}>Categoría</label>
+                              <select value={formEditar.categoria || ''} onChange={e => setFormEditar(prev => ({...prev, categoria: e.target.value}))} style={campo}>
+                                <option value=''>Selecciona categoría</option>
+                                {CATEGORIAS.map(c => <option key={c} value={c}>{c}</option>)}
+                              </select>
+                            </div>
+                            <div>
+                              <label style={label}>Nuevo precio (S/)</label>
+                              <input type='number' value={formEditar.precio_inicial} onChange={e => setFormEditar(prev => ({...prev, precio_inicial: e.target.value}))} placeholder='Precio' style={campo} />
+                            </div>
+                          </div>
                           <div style={{ display:'flex', gap:'8px' }}>
                             <button onClick={() => setEditando(null)} style={{ flex:1, padding:'8px', borderRadius:'8px', border:'1px solid #ddd', background:'transparent', fontSize:'13px', cursor:'pointer', color:'#666' }}>Cancelar</button>
                             <button onClick={() => guardarYRepublicar(r.id)} disabled={guardando}
@@ -420,7 +453,7 @@ export default function PanelVendedor() {
                         </div>
                       ) : (
                         <div style={{ display:'flex', gap:'8px', flexWrap:'wrap' }}>
-                          <button onClick={() => { setEditando(r.id); setFormEditar({ titulo: r.titulo, descripcion: r.descripcion, precio_inicial: r.precio_inicial }) }}
+                          <button onClick={() => { setEditando(r.id); setFormEditar({ titulo: r.titulo, descripcion: r.descripcion, categoria: r.categoria, precio_inicial: r.precio_inicial }) }}
                             style={{ flex:1, padding:'8px', borderRadius:'8px', border:'1px solid #ddd', background:'transparent', fontSize:'12px', cursor:'pointer', color:'#444', minWidth:'140px' }}>
                             Modificar y republicar (1 crédito)
                           </button>
