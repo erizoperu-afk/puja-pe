@@ -27,6 +27,9 @@ export default function PanelVendedor() {
   const [editandoActivo, setEditandoActivo] = useState(null)
   const [formEditarActivo, setFormEditarActivo] = useState({})
   const [guardandoActivo, setGuardandoActivo] = useState(false)
+  const [fotosActivo, setFotosActivo] = useState([])
+  const [fotosActivoUrl, setFotosActivoUrl] = useState([])
+  const [fotosActivoExistentes, setFotosActivoExistentes] = useState([])
 
   useEffect(() => { cargarDatos() }, [])
   useEffect(() => { setPagina(1) }, [tab])
@@ -95,16 +98,49 @@ export default function PanelVendedor() {
     cargarDatos()
   }
 
+  function abrirEditorActivo(r) {
+    setEditandoActivo(r.id)
+    setFormEditarActivo({ titulo: r.titulo, descripcion: r.descripcion, categoria: r.categoria, precio_inicial: r.precio_inicial })
+    setFotosActivo([])
+    setFotosActivoUrl([])
+    setFotosActivoExistentes(r.imagenes_url || (r.imagen_url ? [r.imagen_url] : []))
+  }
+
   async function guardarCambiosActivo(remateId) {
     setGuardandoActivo(true)
+
+    let imagenes_url = [...fotosActivoExistentes]
+    let imagen_url = imagenes_url[0] || null
+
+    if (fotosActivo.length > 0) {
+      const { data: { session: s } } = await supabase.auth.getSession()
+      for (let i = 0; i < fotosActivo.length; i++) {
+        const nombreArchivo = s.user.id + '_' + Date.now() + '_' + i + '_' + fotosActivo[i].name
+        const { error: uploadError } = await supabase.storage
+          .from('fotos-remates').upload(nombreArchivo, fotosActivo[i])
+        if (!uploadError) {
+          const { data: urlData } = supabase.storage.from('fotos-remates').getPublicUrl(nombreArchivo)
+          imagenes_url.push(urlData.publicUrl)
+        }
+      }
+      imagenes_url = imagenes_url.slice(0, 3)
+      imagen_url = imagenes_url[0]
+    }
+
     await supabase.from('remates').update({
       titulo: formEditarActivo.titulo,
       descripcion: formEditarActivo.descripcion,
       categoria: formEditarActivo.categoria,
       precio_inicial: Number(formEditarActivo.precio_inicial),
       precio_actual: Number(formEditarActivo.precio_inicial),
+      imagen_url,
+      imagenes_url,
     }).eq('id', remateId)
+
     setEditandoActivo(null)
+    setFotosActivo([])
+    setFotosActivoUrl([])
+    setFotosActivoExistentes([])
     setGuardandoActivo(false)
     cargarDatos()
   }
@@ -198,6 +234,8 @@ export default function PanelVendedor() {
       <div style={{ textAlign:'center', padding:'60px', color:'#999' }}>Cargando tu panel...</div>
     </main>
   )
+
+  const totalFotosActivo = fotosActivoExistentes.length + fotosActivo.length
 
   return (
     <main style={{ fontFamily:'sans-serif', background:'#f9f9f9', minHeight:'100vh' }}>
@@ -319,7 +357,7 @@ export default function PanelVendedor() {
                   {/* ACTIVO SIN PUJAS — botones editar/cancelar */}
                   {puedeEditar && !esEditandoEsteActivo && (
                     <div style={{ marginTop:'12px', paddingTop:'12px', borderTop:'1px solid #f0f0f0', display:'flex', gap:'8px', flexWrap:'wrap' }}>
-                      <button onClick={() => { setEditandoActivo(r.id); setFormEditarActivo({ titulo: r.titulo, descripcion: r.descripcion, categoria: r.categoria, precio_inicial: r.precio_inicial }) }}
+                      <button onClick={() => abrirEditorActivo(r)}
                         style={{ flex:1, padding:'8px', borderRadius:'8px', border:'1px solid #1D9E75', background:'transparent', fontSize:'12px', cursor:'pointer', color:'#1D9E75', minWidth:'140px' }}>
                         Modificar publicación
                       </button>
@@ -335,6 +373,55 @@ export default function PanelVendedor() {
                     <div style={{ marginTop:'12px', paddingTop:'12px', borderTop:'1px solid #f0f0f0' }}>
                       <div style={{ background:'#f9f9f9', borderRadius:'8px', padding:'12px' }}>
                         <p style={{ fontSize:'12px', fontWeight:'500', color:'#444', marginBottom:'12px' }}>Modificar publicación — sin costo de crédito</p>
+
+                        {/* FOTOS */}
+                        <div style={{ marginBottom:'12px' }}>
+                          <label style={label}>Fotos (máximo 3)</label>
+                          <div style={{ display:'flex', gap:'8px', flexWrap:'wrap', marginTop:'6px' }}>
+                            {/* Fotos existentes */}
+                            {fotosActivoExistentes.map((url, i) => (
+                              <div key={'ex-' + i} style={{ position:'relative' }}>
+                                <img src={url} alt='' style={{ width:'72px', height:'72px', objectFit:'cover', borderRadius:'8px', border:'1px solid #eee' }} />
+                                <button
+                                  onClick={() => setFotosActivoExistentes(fotosActivoExistentes.filter((_, j) => j !== i))}
+                                  style={{ position:'absolute', top:'-6px', right:'-6px', width:'18px', height:'18px', borderRadius:'50%', background:'#E24B4A', color:'white', border:'none', cursor:'pointer', fontSize:'10px', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                                  ×
+                                </button>
+                              </div>
+                            ))}
+                            {/* Fotos nuevas */}
+                            {fotosActivoUrl.map((url, i) => (
+                              <div key={'new-' + i} style={{ position:'relative' }}>
+                                <img src={url} alt='' style={{ width:'72px', height:'72px', objectFit:'cover', borderRadius:'8px', border:'2px solid #1D9E75' }} />
+                                <button
+                                  onClick={() => {
+                                    setFotosActivo(fotosActivo.filter((_, j) => j !== i))
+                                    setFotosActivoUrl(fotosActivoUrl.filter((_, j) => j !== i))
+                                  }}
+                                  style={{ position:'absolute', top:'-6px', right:'-6px', width:'18px', height:'18px', borderRadius:'50%', background:'#E24B4A', color:'white', border:'none', cursor:'pointer', fontSize:'10px', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                                  ×
+                                </button>
+                              </div>
+                            ))}
+                            {/* Botón agregar */}
+                            {totalFotosActivo < 3 && (
+                              <label style={{ width:'72px', height:'72px', border:'1px dashed #ddd', borderRadius:'8px', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', cursor:'pointer', background:'#fff', fontSize:'11px', color:'#999' }}>
+                                <span style={{ fontSize:'20px', marginBottom:'2px' }}>+</span>
+                                Agregar
+                                <input type='file' accept='image/*' multiple style={{ display:'none' }} onChange={e => {
+                                  const archivos = Array.from(e.target.files)
+                                  const disponibles = 3 - totalFotosActivo
+                                  const nuevos = archivos.slice(0, disponibles)
+                                  if (nuevos.length === 0) return
+                                  setFotosActivo(prev => [...prev, ...nuevos])
+                                  setFotosActivoUrl(prev => [...prev, ...nuevos.map(f => URL.createObjectURL(f))])
+                                }} />
+                              </label>
+                            )}
+                          </div>
+                          <p style={{ fontSize:'11px', color:'#999', marginTop:'4px' }}>Las fotos con borde verde son nuevas y se subirán al guardar.</p>
+                        </div>
+
                         <div style={{ marginBottom:'10px' }}>
                           <label style={label}>Título</label>
                           <input value={formEditarActivo.titulo} onChange={e => setFormEditarActivo(prev => ({...prev, titulo: e.target.value}))} placeholder='Título del artículo' style={campo} />
@@ -358,7 +445,10 @@ export default function PanelVendedor() {
                         </div>
                         <p style={{ fontSize:'11px', color:'#999', marginBottom:'10px' }}>La ubicación no puede modificarse una vez publicado.</p>
                         <div style={{ display:'flex', gap:'8px' }}>
-                          <button onClick={() => setEditandoActivo(null)} style={{ flex:1, padding:'8px', borderRadius:'8px', border:'1px solid #ddd', background:'transparent', fontSize:'13px', cursor:'pointer', color:'#666' }}>Cancelar</button>
+                          <button onClick={() => { setEditandoActivo(null); setFotosActivo([]); setFotosActivoUrl([]); setFotosActivoExistentes([]) }}
+                            style={{ flex:1, padding:'8px', borderRadius:'8px', border:'1px solid #ddd', background:'transparent', fontSize:'13px', cursor:'pointer', color:'#666' }}>
+                            Cancelar
+                          </button>
                           <button onClick={() => guardarCambiosActivo(r.id)} disabled={guardandoActivo}
                             style={{ flex:1, padding:'8px', borderRadius:'8px', border:'none', background:'#1D9E75', color:'white', fontSize:'13px', cursor:'pointer', fontWeight:'500' }}>
                             {guardandoActivo ? 'Guardando...' : 'Guardar cambios'}
