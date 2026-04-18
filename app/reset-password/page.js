@@ -3,7 +3,28 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../supabase'
 
-const campo = { width:'100%', padding:'10px 12px', borderRadius:'8px', border:'1px solid #ddd', fontSize:'14px', boxSizing:'border-box' }
+const campo = { width:'100%', padding:'10px 12px', borderRadius:'8px', border:'1px solid #ddd', fontSize:'14px', boxSizing:'border-box', paddingRight:'44px' }
+
+function CampoPassword({ value, onChange, placeholder, ver, setVer }) {
+  return (
+    <div style={{ position:'relative' }}>
+      <input
+        type={ver ? 'text' : 'password'}
+        placeholder={placeholder}
+        value={value}
+        onChange={onChange}
+        style={campo}
+      />
+      <button
+        type='button'
+        onMouseDown={e => e.preventDefault()}
+        onClick={() => setVer(v => !v)}
+        style={{ position:'absolute', right:'10px', top:'50%', transform:'translateY(-50%)', background:'none', border:'none', cursor:'pointer', padding:'4px', color:'#999', fontSize:'18px', lineHeight:1 }}>
+        👁
+      </button>
+    </div>
+  )
+}
 
 export default function ResetPassword() {
   const [password, setPassword] = useState('')
@@ -13,6 +34,8 @@ export default function ResetPassword() {
   const [listo, setListo] = useState(false)
   const [sesionLista, setSesionLista] = useState(false)
   const [tokenError, setTokenError] = useState(false)
+  const [verPass, setVerPass] = useState(false)
+  const [verConfirmar, setVerConfirmar] = useState(false)
   const sesionRef = useRef(null)
 
   useEffect(() => {
@@ -70,7 +93,6 @@ export default function ResetPassword() {
       setCargando(false); return
     }
 
-    // Restablecer sesión antes de actualizar
     if (sesionRef.current) {
       await supabase.auth.setSession({
         access_token: sesionRef.current.access_token,
@@ -141,14 +163,12 @@ export default function ResetPassword() {
 
         <div style={{ marginBottom:'14px' }}>
           <label style={{ fontSize:'12px', color:'#666', display:'block', marginBottom:'5px' }}>Nueva contraseña</label>
-          <input type='password' placeholder='Mínimo 6 caracteres' value={password}
-            onChange={e => setPassword(e.target.value)} style={campo} />
+          <CampoPassword value={password} onChange={e => setPassword(e.target.value)} placeholder='Mínimo 6 caracteres' ver={verPass} setVer={setVerPass} />
         </div>
 
         <div style={{ marginBottom:'20px' }}>
           <label style={{ fontSize:'12px', color:'#666', display:'block', marginBottom:'5px' }}>Confirmar contraseña</label>
-          <input type='password' placeholder='Repite tu contraseña' value={confirmar}
-            onChange={e => setConfirmar(e.target.value)} style={campo} />
+          <CampoPassword value={confirmar} onChange={e => setConfirmar(e.target.value)} placeholder='Repite tu contraseña' ver={verConfirmar} setVer={setVerConfirmar} />
         </div>
 
         <button onClick={handleReset} disabled={cargando}
