@@ -59,6 +59,15 @@ export default function Login() {
     if (error) {
       setError('Correo/nickname o contraseña incorrectos.')
     } else {
+      // Verificar si es admin
+      const { data: esAdmin } = await supabase
+        .from('admins').select('email').eq('email', emailFinal).maybeSingle()
+      if (esAdmin) {
+        window.location.href = '/'
+        setCargando(false)
+        return
+      }
+
       const { data: perfil } = await supabase
         .from('usuarios')
         .select('celular_verificado, nombre, apellido, celular')
@@ -177,7 +186,7 @@ export default function Login() {
     setError('')
     if (!emailRecuperacion.trim()) { setError('Ingresa tu correo electrónico.'); setCargando(false); return }
     const { error } = await supabase.auth.resetPasswordForEmail(emailRecuperacion, {
-      redirectTo: 'https://puja.pe/reset-password'
+      redirectTo: 'https://www.puja.pe/reset-password'
     })
     if (error) {
       setError('Error al enviar el correo. Verifica que el email sea correcto.')
