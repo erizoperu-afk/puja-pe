@@ -61,7 +61,7 @@ export default function Login() {
     } else {
       // Verificar si es admin
       const { data: esAdmin } = await supabase
-        .from('admins').select('email').eq('email', emailFinal).maybeSingle()
+        .from('admins').select('email').eq('email', data.user.email).maybeSingle()
       if (esAdmin) {
         window.location.href = '/'
         setCargando(false)
