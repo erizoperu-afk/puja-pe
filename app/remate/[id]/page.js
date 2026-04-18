@@ -5,6 +5,43 @@ import GaleriaFotos from './galeriaFotos'
 import BotonFavorito from './BotonFavorito'
 import BotonCompartir from './BotonCompartir'
 
+export async function generateMetadata({ params }) {
+  const { id } = await params
+  const { data: remate } = await supabase
+    .from('remates')
+    .select('*')
+    .eq('id', id)
+    .single()
+
+  if (!remate) return { title: 'Remate no encontrado — Puja.pe' }
+
+  return {
+    title: remate.titulo + ' — Puja.pe',
+    description: remate.descripcion || 'Participa en este remate en Puja.pe',
+    openGraph: {
+      title: remate.titulo + ' — S/ ' + Number(remate.precio_actual).toLocaleString(),
+      description: remate.descripcion || 'Participa en este remate en Puja.pe',
+      url: 'https://www.puja.pe/remate/' + remate.id,
+      images: [
+        {
+          url: remate.imagen_url,
+          width: 1200,
+          height: 630,
+          alt: remate.titulo,
+        }
+      ],
+      type: 'website',
+      siteName: 'Puja.pe',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: remate.titulo + ' — S/ ' + Number(remate.precio_actual).toLocaleString(),
+      description: remate.descripcion || 'Participa en este remate en Puja.pe',
+      images: [remate.imagen_url],
+    }
+  }
+}
+
 export default async function PaginaRemate({ params }) {
   const { id } = await params
   const { data: remate } = await supabase
@@ -30,19 +67,16 @@ export default async function PaginaRemate({ params }) {
 
         <div style={{ display:'grid', gridTemplateColumns:'1fr', gap:'16px' }} className='remate-grid'>
 
-          {/* GALERIA — visible arriba en mobile */}
           <div className='galeria-col'>
             <GaleriaFotos imagenes={remate.imagenes_url || (remate.imagen_url ? [remate.imagen_url] : [])} titulo={remate.titulo} />
           </div>
 
-          {/* PUJABOX — título, precio, temporizador */}
           <div className='pujabox-col'>
             <PujaBox remate={remate} />
             <BotonFavorito remateId={remate.id} />
             <BotonCompartir url={url} texto={texto} titulo={remate.titulo} />
           </div>
 
-          {/* INFO — descripción y detalles */}
           <div className='info-col'>
             <div style={{ background:'#fff', border:'1px solid #eee', borderRadius:'12px', padding:'20px', marginBottom:'16px' }}>
               <h2 style={{ fontSize:'15px', fontWeight:'500', marginBottom:'12px' }}>Descripcion</h2>
@@ -67,7 +101,6 @@ export default async function PaginaRemate({ params }) {
       </div>
 
       <style>{`
-        /* DESKTOP — 2 columnas: contenido izquierda, pujabox derecha */
         @media (min-width: 768px) {
           .remate-grid {
             grid-template-columns: 1fr 340px !important;
@@ -79,8 +112,6 @@ export default async function PaginaRemate({ params }) {
           .pujabox-col { grid-area: pujabox; }
           .info-col { grid-area: info; }
         }
-
-        /* MOBILE — 1 columna: foto, luego pujabox, luego info */
         @media (max-width: 767px) {
           .remate-grid {
             display: flex !important;
