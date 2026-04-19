@@ -45,16 +45,6 @@ export default function PanelAdmin() {
     setAutorizado(true)
     cargarDatos()
   }
-async function verificarAdmin() {
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session) { window.location.href = '/login'; return }
-    setSessionUser(session.user)
-    const { data: admin } = await supabase
-      .from('admins').select('email').eq('email', session.user.email).single()
-    if (!admin) { window.location.href = '/'; return }
-    setAutorizado(true)
-    cargarDatos()
-  }
 
   async function suscribirPush() {
     try {
@@ -81,6 +71,7 @@ async function verificarAdmin() {
       body: JSON.stringify({ titulo, mensaje })
     })
   }
+
   async function cargarDatos() {
     const { data: usuariosData } = await supabase
       .from('usuarios').select('*').order('created_at', { ascending: false })
@@ -629,14 +620,6 @@ async function verificarAdmin() {
                 🔔 Activar notificaciones push
               </button>
             </div>
-          </div>
-        
-            )}
-            {!configBeta && (
-              <div style={{ background:'#FCEBEB', border:'1px solid #E24B4A', borderRadius:'8px', padding:'12px' }}>
-                <p style={{ fontSize:'13px', color:'#A32D2D' }}>Fuera del BETA los usuarios deben comprar paquetes de créditos para publicar.</p>
-              </div>
-            )}
           </div>
         )}
 
