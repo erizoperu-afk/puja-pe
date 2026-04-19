@@ -45,7 +45,42 @@ export default function PanelAdmin() {
     setAutorizado(true)
     cargarDatos()
   }
+async function verificarAdmin() {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) { window.location.href = '/login'; return }
+    setSessionUser(session.user)
+    const { data: admin } = await supabase
+      .from('admins').select('email').eq('email', session.user.email).single()
+    if (!admin) { window.location.href = '/'; return }
+    setAutorizado(true)
+    cargarDatos()
+  }
 
+  async function suscribirPush() {
+    try {
+      const registro = await navigator.serviceWorker.ready
+      const suscripcion = await registro.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: 'BG4GwEVFLeJEiIj7bCse6-B7oeHVONoWiDjeRU7JMpCMGM7A6geqwS0qTL7NiLtPlxE3OtXimux4vg4JFKJeIyE'
+      })
+      await fetch('/api/push/suscribir', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ suscripcion, admin_email: sessionUser?.email })
+      })
+      alert('✅ Notificaciones push activadas')
+    } catch (error) {
+      alert('Error al activar notificaciones: ' + error.message)
+    }
+  }
+
+  async function enviarPushAdmin(titulo, mensaje) {
+    await fetch('/api/push/enviar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ titulo, mensaje })
+    })
+  }
   async function cargarDatos() {
     const { data: usuariosData } = await supabase
       .from('usuarios').select('*').order('created_at', { ascending: false })
@@ -579,6 +614,23 @@ export default function PanelAdmin() {
               <div style={{ background:'#E1F5EE', border:'1px solid #9FE1CB', borderRadius:'8px', padding:'12px' }}>
                 <p style={{ fontSize:'13px', color:'#085041' }}>Durante el BETA los nuevos usuarios reciben 999 créditos gratis automáticamente.</p>
               </div>
+            )}
+            {!configBeta && (
+              <div style={{ background:'#FCEBEB', border:'1px solid #E24B4A', borderRadius:'8px', padding:'12px' }}>
+                <p style={{ fontSize:'13px', color:'#A32D2D' }}>Fuera del BETA los usuarios deben comprar paquetes de créditos para publicar.</p>
+              </div>
+            )}
+            <div style={{ marginTop:'16px', paddingTop:'16px', borderTop:'1px solid #eee' }}>
+              <p style={{ fontSize:'13px', color:'#666', marginBottom:'10px' }}>
+                Activa las notificaciones push para recibir alertas cuando lleguen mensajes o verificaciones pendientes.
+              </p>
+              <button onClick={suscribirPush}
+                style={{ padding:'10px 20px', background:'#1D9E75', color:'white', border:'none', borderRadius:'8px', fontSize:'13px', cursor:'pointer', fontWeight:'500' }}>
+                🔔 Activar notificaciones push
+              </button>
+            </div>
+          </div>
+        
             )}
             {!configBeta && (
               <div style={{ background:'#FCEBEB', border:'1px solid #E24B4A', borderRadius:'8px', padding:'12px' }}>
