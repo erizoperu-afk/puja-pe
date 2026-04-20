@@ -21,6 +21,21 @@ export async function POST(request) {
       .verifications.create({ to: numero, channel: 'sms' })
 
     console.log('Resultado Twilio:', result.status)
+
+    // Notificar al admin
+    try {
+      await fetch(process.env.NEXT_PUBLIC_SITE_URL + '/api/push/enviar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          titulo: '📱 Nueva verificación pendiente',
+          mensaje: 'Un usuario con celular +51 ' + celular + ' está esperando verificación.'
+        })
+      })
+    } catch (e) {
+      console.log('Error push:', e.message)
+    }
+
     return Response.json({ ok: true })
   } catch (error) {
     console.log('Error Twilio:', error.message)
