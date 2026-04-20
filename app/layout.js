@@ -106,6 +106,26 @@ export default function RootLayout({ children }) {
               banner.style.display = 'none';
               deferredPrompt = null;
             });
+
+            async function verificarCelular() {
+              try {
+                const path = window.location.pathname
+                if (path.startsWith('/login') || path.startsWith('/verificar-celular-pendiente') || path.startsWith('/completar-perfil') || path.startsWith('/reset-password') || path.startsWith('/api')) return
+                const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm')
+                const supabase = createClient('${process.env.NEXT_PUBLIC_SUPABASE_URL}', '${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}')
+                const { data: { session } } = await supabase.auth.getSession()
+                if (!session) return
+                const { data: esAdmin } = await supabase.from('admins').select('email').eq('email', session.user.email).maybeSingle()
+                if (esAdmin) return
+                const { data: usuario } = await supabase.from('usuarios').select('celular_verificado').eq('id', session.user.id).single()
+                if (usuario && !usuario.celular_verificado) {
+                  window.location.href = '/verificar-celular-pendiente'
+                }
+              } catch(e) {
+                console.log('Error verificar celular:', e)
+              }
+            }
+            verificarCelular()
           `
         }} />
       </body>
