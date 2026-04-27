@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from './supabase'
 import Navbar from './Navbar'
 
@@ -124,13 +125,17 @@ function TarjetaRemate({ remate }) {
 }
 
 export default function Home() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const [remates, setRemates] = useState([])
   const [hot, setHot] = useState([])
   const [nuevos, setNuevos] = useState([])
-  const [busqueda, setBusqueda] = useState('')
+  const [inputBusqueda, setInputBusqueda] = useState(searchParams.get('q') || '')
   const [cargando, setCargando] = useState(true)
   const [pagina, setPagina] = useState(1)
   const [catHover, setCatHover] = useState(null)
+
+  const busqueda = searchParams.get('q') || ''
 
   useEffect(() => {
     async function cargarRemates() {
@@ -163,7 +168,20 @@ export default function Home() {
     : remates
   const totalPaginas = Math.ceil(rematesFiltrados.length / POR_PAGINA)
   const rematesPagina = rematesFiltrados.slice((pagina - 1) * POR_PAGINA, pagina * POR_PAGINA)
-  function handleBusqueda(e) { setBusqueda(e.target.value); setPagina(1) }
+
+  function buscar() {
+    const q = inputBusqueda.trim()
+    if (q) {
+      router.push('/?q=' + encodeURIComponent(q))
+    } else {
+      router.push('/')
+    }
+    setPagina(1)
+  }
+
+  function handleKeyDown(e) {
+    if (e.key === 'Enter') buscar()
+  }
 
   const btnPag = { padding:'8px 16px', borderRadius:'8px', border:'1px solid #ddd', background:'#fff', cursor:'pointer', fontSize:'13px', color:'#666' }
   const btnPagActivo = { ...btnPag, background:'#1D9E75', color:'white', border:'1px solid #1D9E75', fontWeight:'500' }
@@ -199,9 +217,11 @@ export default function Home() {
         <h1 style={{ fontSize:'22px', fontWeight:'500', marginBottom:'8px' }}>Remata y compra en todo el Peru</h1>
         <p style={{ color:'#666', marginBottom:'20px', fontSize:'14px' }}>Encuentra las mejores ofertas o publica lo que ya no usas</p>
         <div style={{ display:'flex', gap:'8px', maxWidth:'480px', margin:'0 auto' }}>
-          <input type='text' placeholder='Busca articulos...' value={busqueda} onChange={handleBusqueda}
+          <input type='text' placeholder='Busca articulos...' value={inputBusqueda}
+            onChange={e => setInputBusqueda(e.target.value)}
+            onKeyDown={handleKeyDown}
             style={{ flex:1, padding:'10px 14px', borderRadius:'8px', border:'1px solid #ddd', fontSize:'14px', minWidth:0 }} />
-          <button onClick={() => setPagina(1)} style={{ padding:'10px 16px', background:'#1D9E75', color:'white', border:'none', borderRadius:'8px', cursor:'pointer', fontWeight:'500', whiteSpace:'nowrap' }}>Buscar</button>
+          <button onClick={buscar} style={{ padding:'10px 16px', background:'#1D9E75', color:'white', border:'none', borderRadius:'8px', cursor:'pointer', fontWeight:'500', whiteSpace:'nowrap' }}>Buscar</button>
         </div>
       </section>
 
