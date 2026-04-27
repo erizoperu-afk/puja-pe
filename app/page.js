@@ -1,7 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useState, useEffect } from 'react'
 import { supabase } from './supabase'
 import Navbar from './Navbar'
 
@@ -125,17 +124,21 @@ function TarjetaRemate({ remate }) {
 }
 
 export default function Home() {
-  const router = useRouter()
-  const searchParams = useSearchParams()
   const [remates, setRemates] = useState([])
   const [hot, setHot] = useState([])
   const [nuevos, setNuevos] = useState([])
-  const [inputBusqueda, setInputBusqueda] = useState(searchParams.get('q') || '')
+  const [busqueda, setBusqueda] = useState('')
+  const [inputBusqueda, setInputBusqueda] = useState('')
   const [cargando, setCargando] = useState(true)
   const [pagina, setPagina] = useState(1)
   const [catHover, setCatHover] = useState(null)
 
-  const busqueda = searchParams.get('q') || ''
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const q = params.get('q') || ''
+    setBusqueda(q)
+    setInputBusqueda(q)
+  }, [])
 
   useEffect(() => {
     async function cargarRemates() {
@@ -172,11 +175,10 @@ export default function Home() {
   function buscar() {
     const q = inputBusqueda.trim()
     if (q) {
-      router.push('/?q=' + encodeURIComponent(q))
+      window.location.href = '/?q=' + encodeURIComponent(q)
     } else {
-      router.push('/')
+      window.location.href = '/'
     }
-    setPagina(1)
   }
 
   function handleKeyDown(e) {
