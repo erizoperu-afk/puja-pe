@@ -154,10 +154,13 @@ export default function Home() {
     cargarRemates()
   }, [])
 
-  const rematesFiltrados = remates.filter(r =>
-    r.titulo?.toLowerCase().includes(busqueda.toLowerCase()) ||
-    r.categoria?.toLowerCase().includes(busqueda.toLowerCase())
-  )
+  const busquedaActiva = busqueda.trim().length > 0
+  const rematesFiltrados = busquedaActiva
+    ? remates.filter(r =>
+        r.titulo?.toLowerCase().includes(busqueda.trim().toLowerCase()) ||
+        r.categoria?.toLowerCase().includes(busqueda.trim().toLowerCase())
+      )
+    : remates
   const totalPaginas = Math.ceil(rematesFiltrados.length / POR_PAGINA)
   const rematesPagina = rematesFiltrados.slice((pagina - 1) * POR_PAGINA, pagina * POR_PAGINA)
   function handleBusqueda(e) { setBusqueda(e.target.value); setPagina(1) }
@@ -203,7 +206,7 @@ export default function Home() {
       </section>
 
       {/* LOS REMATES MAS HOT */}
-      {!cargando && hot.length > 0 && !busqueda && (
+      {!cargando && hot.length > 0 && !busquedaActiva && (
         <section style={{ padding:'24px 16px', maxWidth:'1200px', margin:'0 auto' }}>
           <div style={{ display:'flex', alignItems:'center', gap:'8px', marginBottom:'16px', flexWrap:'wrap' }}>
             <h2 style={{ fontSize:'18px', fontWeight:'700', letterSpacing:'0.5px' }}>LOS REMATES MAS HOT</h2>
@@ -224,7 +227,7 @@ export default function Home() {
       )}
 
       {/* LO NUEVO */}
-      {!cargando && nuevos.length > 0 && !busqueda && (
+      {!cargando && nuevos.length > 0 && !busquedaActiva && (
         <section style={{ padding:'24px 16px', maxWidth:'1200px', margin:'0 auto', borderTop:'1px solid #eee' }}>
           <div style={{ display:'flex', alignItems:'center', gap:'8px', marginBottom:'16px', flexWrap:'wrap' }}>
             <span style={{ fontSize:'18px' }}>✨</span>
@@ -253,7 +256,7 @@ export default function Home() {
           {totalPaginas > 1 && <span style={{ fontSize:'13px', color:'#999' }}>Pagina {pagina} de {totalPaginas}</span>}
         </div>
         {cargando && <div style={{ textAlign:'center', padding:'40px', color:'#999' }}>Cargando remates...</div>}
-        {!cargando && rematesFiltrados.length === 0 && busqueda && (
+        {!cargando && rematesFiltrados.length === 0 && busquedaActiva && (
           <div style={{ textAlign:'center', padding:'40px', color:'#999' }}>
             <p style={{ fontSize:'16px', marginBottom:'8px' }}>No se encontraron resultados para "{busqueda}"</p>
             <p style={{ fontSize:'13px' }}>Intenta con otro término de búsqueda</p>
