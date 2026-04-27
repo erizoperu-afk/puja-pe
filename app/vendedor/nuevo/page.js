@@ -617,7 +617,15 @@ export default function NuevoRemate() {
       tipo_publicacion: tipo,
       permite_ofertas: tipo === 'precio_fijo' ? permiteOfertas : false,
     }).select().single()
-    if (err) { setError('Error al publicar: ' + err.message); setCargando(false); return }
+    if (err) {
+      if (err.message.includes('precio_positivo')) {
+        setError('El precio debe ser mayor a 0.')
+      } else {
+        setError('Error al publicar: ' + err.message)
+      }
+      setCargando(false)
+      return
+    }
 
     await supabase.from('creditos').update({ saldo: cred.saldo - 1 }).eq('usuario_id', session.user.id)
     setCreditos(cred.saldo - 1)
