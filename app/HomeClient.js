@@ -208,11 +208,6 @@ export default function HomeClient({ q }) {
         </div>
       </div>
 
-      {/* DEBUG — remover después */}
-      <div style={{ background:'red', color:'white', padding:'8px', textAlign:'center', fontSize:'12px' }}>
-        DEBUG: q="{q}" | busquedaActiva={String(busquedaActiva)}
-      </div>
-
       {/* HERO */}
       <section style={{ background:'#f9f9f9', padding:'32px 16px', textAlign:'center', borderBottom:'1px solid #eee' }}>
         <h1 style={{ fontSize:'22px', fontWeight:'500', marginBottom:'8px' }}>Remata y compra en todo el Peru</h1>
