@@ -539,7 +539,7 @@ export default function NuevoRemate() {
     if (!form.titulo.trim()) nuevosErrores.titulo = 'El título es obligatorio.'
     if (!form.categoria) nuevosErrores.categoria = 'La categoría es obligatoria.'
     if (!form.ubicacion) nuevosErrores.ubicacion = 'La ubicación es obligatoria.'
-    if (!form.precio_inicial) nuevosErrores.precio_inicial = 'El precio inicial es obligatorio.'
+    if (!form.precio_inicial || Number(form.precio_inicial) <= 0) nuevosErrores.precio_inicial = 'El precio inicial debe ser mayor a 0.'
     if (fotos.length === 0) nuevosErrores.fotos = 'Agrega al menos 1 foto.'
     if (form.precio_directo && Number(form.precio_directo) < Number(form.precio_inicial)) {
       nuevosErrores.precio_directo = 'El precio de compra directa no puede ser menor al precio inicial.'
@@ -820,14 +820,14 @@ export default function NuevoRemate() {
               <label style={{ fontSize:'12px', color: errores.precio_inicial ? '#A32D2D' : '#666' }}>
                 {tipo === 'subasta' ? 'Precio inicial (S/) *' : 'Precio fijo (S/) *'}
               </label>
-              <input name='precio_inicial' type='number' value={form.precio_inicial} onChange={handleChange}
+              <input name='precio_inicial' type='number' min='1' value={form.precio_inicial} onChange={handleChange}
                 placeholder='500' style={errores.precio_inicial ? campoError : campo} />
               {errores.precio_inicial && <p style={textoError}>{errores.precio_inicial}</p>}
             </div>
             {tipo === 'subasta' && (
               <div>
                 <label style={{ fontSize:'12px', color:'#666' }}>Incremento mínimo (S/)</label>
-                <input name='incremento_minimo' type='number' value={form.incremento_minimo} onChange={handleChange} placeholder='20' style={campo} />
+                <input name='incremento_minimo' type='number' min='1' value={form.incremento_minimo} onChange={handleChange} placeholder='20' style={campo} />
               </div>
             )}
           </div>
@@ -835,7 +835,7 @@ export default function NuevoRemate() {
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px' }}>
               <div>
                 <label style={{ fontSize:'12px', color: errores.precio_directo ? '#A32D2D' : '#666' }}>Compra directa (opcional)</label>
-                <input name='precio_directo' type='number' value={form.precio_directo} onChange={handleChange} placeholder='3500' style={errores.precio_directo ? campoError : campo} />
+                <input name='precio_directo' type='number' min='1' value={form.precio_directo} onChange={handleChange} placeholder='3500' style={errores.precio_directo ? campoError : campo} />
                 {errores.precio_directo && <p style={textoError}>{errores.precio_directo}</p>}
               </div>
               <div>
