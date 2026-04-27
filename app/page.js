@@ -1,6 +1,6 @@
 import HomeClient from './HomeClient'
 
-export default function Page({ searchParams }) {
-  const q = searchParams?.q || ''
+export default async function Page({ searchParams }) {
+  const { q = '' } = await searchParams
   return <HomeClient q={q} />
 }
