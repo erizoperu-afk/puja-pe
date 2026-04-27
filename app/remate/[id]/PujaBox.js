@@ -132,6 +132,19 @@ export default function PujaBox({ remate }) {
     const restriccion = await verificarRestriccion(session.user.id)
     if (restriccion) { setError(restriccion); setCargando(false); return }
 
+    const { data: ultimaPuja } = await supabase
+      .from('pujas')
+      .select('usuario_id')
+      .eq('remate_id', remate.id)
+      .order('monto', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    if (ultimaPuja && ultimaPuja.usuario_id === session.user.id) {
+      setError('Ya eres el mejor postor. Espera que otro usuario puje primero.')
+      setCargando(false)
+      return
+    }
+
     const monto = Number(miPuja)
     const minimo = precio + Number(remate.incremento_minimo)
     if (monto < minimo) { setError('Tu puja debe ser mayor a S/ ' + minimo); setCargando(false); return }
@@ -158,6 +171,19 @@ export default function PujaBox({ remate }) {
 
     const restriccion = await verificarRestriccion(session.user.id)
     if (restriccion) { setError(restriccion); setCargando(false); return }
+
+    const { data: ultimaPuja } = await supabase
+      .from('pujas')
+      .select('usuario_id')
+      .eq('remate_id', remate.id)
+      .order('monto', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    if (ultimaPuja && ultimaPuja.usuario_id === session.user.id) {
+      setError('Ya eres el mejor postor. Espera que otro usuario puje primero.')
+      setCargando(false)
+      return
+    }
 
     const montoMax = Number(miAutobid)
     const minimo = precio + Number(remate.incremento_minimo)
