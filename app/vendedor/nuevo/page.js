@@ -593,11 +593,13 @@ export default function NuevoRemate() {
     let imagenes_url = []
     for (let i = 0; i < fotos.length; i++) {
       const nombreArchivo = session.user.id + '_' + Date.now() + '_' + i + '_' + fotos[i].name
-      const { error: uploadError } = await supabase.storage
-        .from('fotos-remates').upload(nombreArchivo, fotos[i])
-      if (uploadError) { setError('Error al subir foto: ' + uploadError.message); setCargando(false); return }
-      const { data: urlData } = supabase.storage.from('fotos-remates').getPublicUrl(nombreArchivo)
-      imagenes_url.push(urlData.publicUrl)
+      const fd = new FormData()
+      fd.append('file', fotos[i])
+      fd.append('key', nombreArchivo)
+      const uploadRes = await fetch('/api/upload', { method: 'POST', body: fd })
+      if (!uploadRes.ok) { setError('Error al subir foto.'); setCargando(false); return }
+      const { url } = await uploadRes.json()
+      imagenes_url.push(url)
     }
     if (imagenes_url.length > 0) imagen_url = imagenes_url[0]
 

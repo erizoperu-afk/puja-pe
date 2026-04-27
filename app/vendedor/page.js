@@ -116,11 +116,13 @@ export default function PanelVendedor() {
       const { data: { session: s } } = await supabase.auth.getSession()
       for (let i = 0; i < fotosActivo.length; i++) {
         const nombreArchivo = s.user.id + '_' + Date.now() + '_' + i + '_' + fotosActivo[i].name
-        const { error: uploadError } = await supabase.storage
-          .from('fotos-remates').upload(nombreArchivo, fotosActivo[i])
-        if (!uploadError) {
-          const { data: urlData } = supabase.storage.from('fotos-remates').getPublicUrl(nombreArchivo)
-          imagenes_url.push(urlData.publicUrl)
+        const fd = new FormData()
+        fd.append('file', fotosActivo[i])
+        fd.append('key', nombreArchivo)
+        const uploadRes = await fetch('/api/upload', { method: 'POST', body: fd })
+        if (uploadRes.ok) {
+          const { url } = await uploadRes.json()
+          imagenes_url.push(url)
         }
       }
       imagenes_url = imagenes_url.slice(0, 3)
