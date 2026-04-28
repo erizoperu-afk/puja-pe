@@ -125,7 +125,6 @@ export default function Login() {
         celular: celular.trim(),
         celular_verificado: false
       })
-      setUserId(data.user.id)
       fetch('/api/push/enviar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -133,13 +132,7 @@ export default function Login() {
       })
     }
 
-    await fetch('/api/verificar-celular/enviar', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ celular: celular.trim() })
-    })
-
-    setPaso('verificando')
+    window.location.href = '/verificar-celular-pendiente'
     setCargando(false)
   }
 
@@ -239,36 +232,6 @@ export default function Login() {
               </div>
             )
 
-          ) : paso === 'verificando' ? (
-            <div>
-              <div style={{ textAlign:'center', marginBottom:'20px' }}>
-                <div style={{ width:'56px', height:'56px', borderRadius:'50%', background:'#E1F5EE', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 16px', fontSize:'24px' }}>📱</div>
-                <h2 style={{ fontSize:'18px', fontWeight:'500', marginBottom:'8px' }}>Verifica tu celular</h2>
-                <p style={{ fontSize:'14px', color:'#666' }}>Te enviamos un código SMS al número <strong>+51 {celular}</strong></p>
-                <p style={{ fontSize:'12px', color:'#999', marginTop:'6px' }}>Si no recibiste el código, puedes reenviarlo o intentar más tarde.</p>
-              </div>
-              {error && <div style={{ background: error.includes('✅') ? '#E1F5EE' : '#FCEBEB', color: error.includes('✅') ? '#085041' : '#A32D2D', padding:'10px 14px', borderRadius:'8px', fontSize:'13px', marginBottom:'14px' }}>{error}</div>}
-              <div style={{ marginBottom:'16px' }}>
-                <label style={{ fontSize:'12px', color:'#666', display:'block', marginBottom:'5px' }}>Código de verificación</label>
-                <input
-                  type='text'
-                  placeholder='Ej: 482931'
-                  value={codigo}
-                  onChange={e => setCodigo(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                  maxLength={6}
-                  style={{ ...campo, textAlign:'center', fontSize:'24px', letterSpacing:'8px', fontWeight:'500' }}
-                />
-              </div>
-              <button onClick={handleVerificarCodigo} disabled={cargando}
-                style={{ width:'100%', padding:'11px', borderRadius:'8px', border:'none', background: cargando ? '#9FE1CB' : '#1D9E75', color:'white', fontSize:'15px', fontWeight:'500', cursor:'pointer', marginBottom:'12px' }}>
-                {cargando ? 'Verificando...' : 'Confirmar código'}
-              </button>
-              <p style={{ textAlign:'center', fontSize:'12px', color:'#999' }}>
-                ¿No recibiste el código?{' '}
-                <span onClick={reenviarCodigo} style={{ color:'#1D9E75', cursor:'pointer' }}>Reenviar</span>
-              </p>
-            </div>
-
           ) : paso === 'completado' ? (
             <div style={{ textAlign:'center' }}>
               <div style={{ width:'56px', height:'56px', borderRadius:'50%', background:'#E1F5EE', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 16px', fontSize:'24px' }}>✓</div>
@@ -352,7 +315,7 @@ export default function Login() {
                         onChange={e => setCelular(e.target.value.replace(/\D/g,''))}
                         maxLength={9} style={{ ...campo, flex:1 }} />
                     </div>
-                    <p style={{ fontSize:'11px', color:'#999', marginTop:'4px' }}>Te enviaremos un código SMS para verificar.</p>
+                    <p style={{ fontSize:'11px', color:'#999', marginTop:'4px' }}>Nuestro equipo verificará tu cuenta en minutos.</p>
                   </div>
                   <div style={{ marginBottom:'14px' }}>
                     <label style={{ fontSize:'12px', color:'#666', display:'block', marginBottom:'5px' }}>Correo electrónico *</label>
