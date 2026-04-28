@@ -49,6 +49,8 @@ export default function PanelAdmin() {
   async function suscribirPush() {
     try {
       const registro = await navigator.serviceWorker.ready
+      const suscripcionExistente = await registro.pushManager.getSubscription()
+      if (suscripcionExistente) await suscripcionExistente.unsubscribe()
       const suscripcion = await registro.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: 'BOSD2Rw628srXB959c8qb_G3h1pyqZvh_xFVFReOXo99mv01NbuQ8dmQ1deFyWXwYpuZ1yIpNb4z5kq_98xZqMU'
