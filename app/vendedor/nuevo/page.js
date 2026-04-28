@@ -752,9 +752,10 @@ export default function NuevoRemate() {
             {errores.titulo && <p style={textoError}>{errores.titulo}</p>}
           </div>
           <div style={{ marginBottom:'12px' }}>
-            <label style={{ fontSize:'12px', color:'#666' }}>Descripción</label>
+            <label style={{ fontSize:'12px', color: errores.descripcion ? '#A32D2D' : '#666' }}>Descripción</label>
             <textarea name='descripcion' value={form.descripcion} onChange={handleChange}
-              placeholder='Describe el estado, qué incluye...' style={{ ...campo, height:'80px', resize:'vertical' }} />
+              placeholder='Describe el estado, qué incluye...' style={{ ...(errores.descripcion ? campoError : campo), height:'80px', resize:'vertical' }} />
+            {errores.descripcion && <p style={{ color:'#A32D2D', fontSize:'11px', marginTop:'3px' }}>{errores.descripcion}</p>}
           </div>
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px', marginBottom:'12px' }}>
             <div>
