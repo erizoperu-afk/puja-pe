@@ -107,6 +107,11 @@ export default function PanelVendedor() {
   }
 
   async function guardarCambiosActivo(remateId) {
+    const urlRegex = /(https?:\/\/|www\.)\S+/i
+    if (urlRegex.test(formEditarActivo.titulo) || urlRegex.test(formEditarActivo.descripcion)) {
+      alert('El título y la descripción no pueden contener enlaces web.')
+      return
+    }
     setGuardandoActivo(true)
 
     let imagenes_url = [...fotosActivoExistentes]
@@ -162,6 +167,11 @@ export default function PanelVendedor() {
 
   async function guardarYRepublicar(remateId) {
     if (creditos <= 0) { alert('No tienes créditos disponibles.'); return }
+    const urlRegex = /(https?:\/\/|www\.)\S+/i
+    if (urlRegex.test(formEditar.titulo) || urlRegex.test(formEditar.descripcion)) {
+      alert('El título y la descripción no pueden contener enlaces web.')
+      return
+    }
     setGuardando(true)
     const fechaFin = new Date()
     fechaFin.setDate(fechaFin.getDate() + 3)

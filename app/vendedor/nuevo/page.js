@@ -541,6 +541,9 @@ export default function NuevoRemate() {
     if (!form.ubicacion) nuevosErrores.ubicacion = 'La ubicación es obligatoria.'
     if (!form.precio_inicial || Number(form.precio_inicial) <= 0) nuevosErrores.precio_inicial = 'El precio inicial debe ser mayor a 0.'
     if (fotos.length === 0) nuevosErrores.fotos = 'Agrega al menos 1 foto.'
+    const urlRegex = /(https?:\/\/|www\.)\S+/i
+    if (urlRegex.test(form.titulo)) nuevosErrores.titulo = 'El título no puede contener enlaces web.'
+    if (urlRegex.test(form.descripcion)) nuevosErrores.descripcion = 'La descripción no puede contener enlaces web.'
     if (form.precio_directo && Number(form.precio_directo) < Number(form.precio_inicial)) {
       nuevosErrores.precio_directo = 'El precio de compra directa no puede ser menor al precio inicial.'
     }
