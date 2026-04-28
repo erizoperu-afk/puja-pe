@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /api/
+Disallow: /vendedor
+Disallow: /comprador
+Disallow: /login
+Disallow: /verificar-celular-pendiente
+Disallow: /completar-perfil
+
+Sitemap: https://www.puja.pe/sitemap.xml

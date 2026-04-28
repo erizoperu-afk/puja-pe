@@ -14,23 +14,46 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "Puja.pe — Remates online en el Perú",
-  description: "El marketplace de remates online para el mercado peruano. Compra y vende artículos únicos, coleccionables y mucho más.",
+  metadataBase: new URL("https://www.puja.pe"),
+  title: {
+    default: "Puja.pe — Remates online en el Perú",
+    template: "%s — Puja.pe",
+  },
+  description: "Puja.pe es el marketplace de remates y subastas online para el mercado peruano. Compra y vende antigüedades, coleccionables, electrónica, joyas y más. ¡Puja desde cualquier lugar del Perú!",
+  keywords: ["remates online Peru", "subastas online Peru", "comprar remates Peru", "vender en remates", "marketplace Peru", "antigüedades Peru", "coleccionables Peru", "puja.pe"],
+  authors: [{ name: "Puja.pe" }],
+  creator: "Puja.pe",
+  publisher: "Puja.pe",
   manifest: "/manifest.json",
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true },
+  },
   openGraph: {
     title: "Puja.pe — Remates online en el Perú",
-    description: "El marketplace de remates online para el mercado peruano. Compra y vende artículos únicos, coleccionables y mucho más.",
+    description: "El marketplace de remates y subastas online para el Perú. Compra antigüedades, coleccionables, electrónica y más.",
     url: "https://www.puja.pe",
     siteName: "Puja.pe",
+    locale: "es_PE",
     images: [
       {
         url: "https://www.puja.pe/icon-512.png",
         width: 512,
         height: 512,
-        alt: "Puja.pe",
+        alt: "Puja.pe — Remates online en el Perú",
       }
     ],
     type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Puja.pe — Remates online en el Perú",
+    description: "El marketplace de remates y subastas online para el Perú.",
+    images: ["https://www.puja.pe/icon-512.png"],
+  },
+  alternates: {
+    canonical: "https://www.puja.pe",
   },
 };
 
@@ -47,6 +70,16 @@ export default function RootLayout({ children }) {
         <link rel="apple-touch-icon" href="/icon-192.png" />
       </head>
       <body className="min-h-full flex flex-col">
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "Organization",
+          "name": "Puja.pe",
+          "url": "https://www.puja.pe",
+          "logo": "https://www.puja.pe/icon-512.png",
+          "description": "Marketplace de remates y subastas online para el Perú.",
+          "address": { "@type": "PostalAddress", "addressCountry": "PE" },
+          "sameAs": ["https://www.puja.pe"]
+        })}} />
         {children}
         <Footer />
         <CookieBanner />
