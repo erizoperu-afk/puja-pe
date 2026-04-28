@@ -51,7 +51,7 @@ export default function PanelAdmin() {
       const registro = await navigator.serviceWorker.ready
       const suscripcion = await registro.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: 'BG4GwEVFLeJEiIj7bCse6-B7oeHVONoWiDjeRU7JMpCMGM7A6geqwS0qTL7NiLtPlxE3OtXimux4vg4JFKJeIyE'
+        applicationServerKey: 'BOSD2Rw628srXB959c8qb_G3h1pyqZvh_xFVFReOXo99mv01NbuQ8dmQ1deFyWXwYpuZ1yIpNb4z5kq_98xZqMU'
       })
       await fetch('/api/push/suscribir', {
         method: 'POST',
