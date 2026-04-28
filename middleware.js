@@ -35,16 +35,17 @@ export async function middleware(request) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  // Verificar si es admin para rutas de admin
-  if (esAdmin) {
-    const { data: admin } = await supabase
-      .from('admins')
-      .select('email')
-      .eq('email', session.user.email)
-      .maybeSingle()
-    if (!admin) return NextResponse.redirect(new URL('/', request.url))
-    return response
-  }
+  // Si es admin, tiene acceso a todo
+  const { data: admin } = await supabase
+    .from('admins')
+    .select('email')
+    .eq('email', session.user.email)
+    .maybeSingle()
+
+  if (admin) return response
+
+  // Bloquear acceso a rutas de admin para no-admins
+  if (esAdmin) return NextResponse.redirect(new URL('/', request.url))
 
   // Verificar celular para rutas protegidas
   const { data: usuario } = await supabase
