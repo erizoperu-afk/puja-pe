@@ -129,7 +129,7 @@ export default function Login() {
       fetch('/api/push/enviar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ titulo: '👤 Nuevo usuario', mensaje: `${nombre.trim()} ${apellido.trim()} (@${nickname.trim()}) se registró` })
+        body: JSON.stringify({ titulo: '⏳ Usuario pendiente de verificar', mensaje: `${nombre.trim()} ${apellido.trim()} (@${nickname.trim()}) está esperando aprobación` })
       })
     }
 
