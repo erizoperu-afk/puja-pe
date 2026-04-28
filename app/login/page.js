@@ -42,9 +42,7 @@ export default function Login() {
   const [recuperacionEnviada, setRecuperacionEnviada] = useState(false)
   const [verPass, setVerPass] = useState(false)
   const [verPassReg, setVerPassReg] = useState(false)
-  const [paso, setPaso] = useState('formulario')
-  const [codigo, setCodigo] = useState('')
-  const [userId, setUserId] = useState(null)
+  const [registroExitoso, setRegistroExitoso] = useState(false)
 
   async function handleLogin() {
     setCargando(true)
@@ -57,30 +55,31 @@ export default function Login() {
     }
     const { data, error } = await supabase.auth.signInWithPassword({ email: emailFinal, password })
     if (error) {
-      setError('Correo/nickname o contraseña incorrectos.')
-    } else {
-      // Verificar si es admin
-      const { data: esAdmin } = await supabase
-        .from('admins').select('email').eq('email', data.user.email).maybeSingle()
-      if (esAdmin) {
-        window.location.href = '/'
-        setCargando(false)
-        return
-      }
-
-      const { data: perfil } = await supabase
-        .from('usuarios')
-        .select('celular_verificado, nombre, apellido, celular')
-        .eq('id', data.user.id)
-        .single()
-
-      if (perfil && !perfil.celular_verificado) {
-        window.location.href = '/verificar-celular-pendiente'
-      } else if (!perfil || !perfil.nombre || !perfil.apellido || !perfil.celular) {
-        window.location.href = '/completar-perfil'
+      if (error.message.includes('Email not confirmed')) {
+        setError('Debes confirmar tu correo electrónico antes de ingresar. Revisa tu bandeja de entrada.')
       } else {
-        window.location.href = '/'
+        setError('Correo/nickname o contraseña incorrectos.')
       }
+      setCargando(false)
+      return
+    }
+
+    const { data: esAdmin } = await supabase
+      .from('admins').select('email').eq('email', data.user.email).maybeSingle()
+    if (esAdmin) { window.location.href = '/'; return }
+
+    const { data: perfil } = await supabase
+      .from('usuarios')
+      .select('celular_verificado, nombre, apellido, celular')
+      .eq('id', data.user.id)
+      .single()
+
+    if (perfil && !perfil.celular_verificado) {
+      window.location.href = '/verificar-celular-pendiente'
+    } else if (!perfil || !perfil.nombre || !perfil.apellido) {
+      window.location.href = '/completar-perfil'
+    } else {
+      window.location.href = '/'
     }
     setCargando(false)
   }
@@ -91,24 +90,20 @@ export default function Login() {
     if (!nombre.trim()) { setError('El nombre es obligatorio.'); setCargando(false); return }
     if (!apellido.trim()) { setError('El apellido es obligatorio.'); setCargando(false); return }
     if (!nickname.trim()) { setError('El nickname es obligatorio.'); setCargando(false); return }
-    if (!celular.trim()) { setError('El celular es obligatorio.'); setCargando(false); return }
-    if (celular.trim().length < 9) { setError('Ingresa un número de celular válido (9 dígitos).'); setCargando(false); return }
     if (!email.trim()) { setError('El correo es obligatorio.'); setCargando(false); return }
     if (password.length < 6) { setError('La contraseña debe tener mínimo 6 caracteres.'); setCargando(false); return }
 
     const { data: nickExiste } = await supabase.from('usuarios').select('id').eq('nickname', nickname.trim()).maybeSingle()
     if (nickExiste) { setError('El nickname "' + nickname.trim() + '" no está disponible.'); setCargando(false); return }
 
-    const { data: celularExiste } = await supabase.from('usuarios').select('id').eq('celular', celular.trim()).maybeSingle()
-    if (celularExiste) { setError('El número +51 ' + celular.trim() + ' ya está registrado.'); setCargando(false); return }
-
     const { data, error: errAuth } = await supabase.auth.signUp({
       email, password,
       options: { data: { nombre, apellido, nickname, celular } }
     })
+
     if (errAuth) {
       if (errAuth.message.includes('already registered')) {
-        setError('Este correo ya tiene una cuenta registrada. Ingresa con tu correo y contraseña.')
+        setError('Este correo ya tiene una cuenta registrada.')
       } else {
         setError('Error al crear cuenta. Intenta de nuevo.')
       }
@@ -128,54 +123,20 @@ export default function Login() {
       fetch('/api/push/enviar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ titulo: '⏳ Usuario pendiente de verificar', mensaje: `${nombre.trim()} ${apellido.trim()} (@${nickname.trim()}) está esperando aprobación` })
+        body: JSON.stringify({
+          titulo: '⏳ Usuario pendiente de verificar',
+          mensaje: `${nombre.trim()} ${apellido.trim()} (@${nickname.trim()}) está esperando aprobación`
+        })
       })
+
+      // Si hay sesión inmediata (sin confirmación de email), redirigir a espera
+      if (data.session) {
+        window.location.href = '/verificar-celular-pendiente'
+      } else {
+        // Con confirmación de email activada, mostrar mensaje
+        setRegistroExitoso(true)
+      }
     }
-
-    window.location.href = '/verificar-celular-pendiente'
-    setCargando(false)
-  }
-
-  async function handleVerificarCodigo() {
-    setCargando(true)
-    setError('')
-
-    if (!codigo.trim() || codigo.length < 4) {
-      setError('Ingresa el código que recibiste por SMS.')
-      setCargando(false)
-      return
-    }
-
-    const res = await fetch('/api/verificar-celular/confirmar', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ celular: celular.trim(), codigo: codigo.trim() })
-    })
-
-    if (!res.ok) {
-      setError('Código incorrecto o expirado. Intenta de nuevo.')
-      setCargando(false)
-      return
-    }
-
-    if (userId) {
-      await supabase.from('usuarios').update({ celular_verificado: true }).eq('id', userId)
-    }
-
-    setPaso('completado')
-    setEmailONickname(email)
-    setCargando(false)
-  }
-
-  async function reenviarCodigo() {
-    setCargando(true)
-    setError('')
-    await fetch('/api/verificar-celular/enviar', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ celular: celular.trim() })
-    })
-    setError('Código reenviado ✅')
     setCargando(false)
   }
 
@@ -209,7 +170,7 @@ export default function Login() {
               <div style={{ textAlign:'center' }}>
                 <div style={{ width:'56px', height:'56px', borderRadius:'50%', background:'#E1F5EE', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 16px', fontSize:'24px' }}>✉️</div>
                 <h2 style={{ fontSize:'18px', fontWeight:'500', marginBottom:'8px' }}>¡Correo enviado!</h2>
-                <p style={{ fontSize:'14px', color:'#666', marginBottom:'24px' }}>Revisa tu bandeja de entrada y sigue las instrucciones para restablecer tu contraseña.</p>
+                <p style={{ fontSize:'14px', color:'#666', marginBottom:'24px' }}>Revisa tu bandeja de entrada y sigue las instrucciones.</p>
                 <button onClick={() => { setRecuperando(false); setRecuperacionEnviada(false); setEmailRecuperacion('') }}
                   style={{ width:'100%', padding:'11px', borderRadius:'8px', border:'1px solid #ddd', background:'transparent', fontSize:'14px', cursor:'pointer', color:'#444' }}>
                   Volver al ingreso
@@ -232,23 +193,19 @@ export default function Login() {
               </div>
             )
 
-          ) : paso === 'completado' ? (
+          ) : registroExitoso ? (
             <div style={{ textAlign:'center' }}>
-              <div style={{ width:'56px', height:'56px', borderRadius:'50%', background:'#E1F5EE', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 16px', fontSize:'24px' }}>✓</div>
-              <h2 style={{ fontSize:'18px', fontWeight:'500', marginBottom:'8px' }}>¡Cuenta creada!</h2>
-              <p style={{ fontSize:'14px', color:'#666', marginBottom:'24px' }}>Tu celular fue verificado. Ahora ingresa para empezar.</p>
-              <div style={{ marginBottom:'14px', textAlign:'left' }}>
-                <label style={{ fontSize:'12px', color:'#666', display:'block', marginBottom:'5px' }}>Correo electrónico o nickname</label>
-                <input type="text" value={emailONickname} onChange={e => setEmailONickname(e.target.value)} style={campo} />
-              </div>
-              <div style={{ marginBottom:'20px', textAlign:'left' }}>
-                <label style={{ fontSize:'12px', color:'#666', display:'block', marginBottom:'5px' }}>Contraseña</label>
-                <CampoPassword value={password} onChange={e => setPassword(e.target.value)} placeholder='Tu contraseña' ver={verPass} setVer={setVerPass} />
-              </div>
-              {error && <div style={{ background:'#FCEBEB', color:'#A32D2D', padding:'10px 14px', borderRadius:'8px', fontSize:'13px', marginBottom:'14px' }}>{error}</div>}
-              <button onClick={handleLogin} disabled={cargando}
-                style={{ width:'100%', padding:'11px', borderRadius:'8px', border:'none', background: cargando ? '#9FE1CB' : '#1D9E75', color:'white', fontSize:'15px', fontWeight:'500', cursor:'pointer' }}>
-                {cargando ? 'Ingresando...' : 'Ingresar ahora'}
+              <div style={{ fontSize:'48px', marginBottom:'16px' }}>✉️</div>
+              <h2 style={{ fontSize:'18px', fontWeight:'600', marginBottom:'8px' }}>¡Cuenta creada!</h2>
+              <p style={{ fontSize:'14px', color:'#666', marginBottom:'8px' }}>
+                Te enviamos un correo de confirmación a <strong>{email}</strong>.
+              </p>
+              <p style={{ fontSize:'13px', color:'#999', marginBottom:'24px' }}>
+                Confírmalo y luego ingresa — nuestro equipo aprobará tu cuenta en minutos.
+              </p>
+              <button onClick={() => setRegistroExitoso(false)}
+                style={{ width:'100%', padding:'11px', borderRadius:'8px', border:'1px solid #ddd', background:'transparent', fontSize:'14px', cursor:'pointer', color:'#444' }}>
+                Ir al ingreso
               </button>
             </div>
 
@@ -308,14 +265,13 @@ export default function Login() {
                     <p style={{ fontSize:'11px', color:'#999', marginTop:'4px' }}>Aparecerá en tus pujas y publicaciones.</p>
                   </div>
                   <div style={{ marginBottom:'14px' }}>
-                    <label style={{ fontSize:'12px', color:'#666', display:'block', marginBottom:'5px' }}>Celular *</label>
+                    <label style={{ fontSize:'12px', color:'#666', display:'block', marginBottom:'5px' }}>Celular (opcional)</label>
                     <div style={{ display:'flex', gap:'8px' }}>
                       <span style={{ padding:'10px 12px', borderRadius:'8px', border:'1px solid #ddd', fontSize:'14px', background:'#f9f9f9', color:'#666', whiteSpace:'nowrap' }}>+51</span>
                       <input type="tel" placeholder="999 999 999" value={celular}
                         onChange={e => setCelular(e.target.value.replace(/\D/g,''))}
                         maxLength={9} style={{ ...campo, flex:1 }} />
                     </div>
-                    <p style={{ fontSize:'11px', color:'#999', marginTop:'4px' }}>Nuestro equipo verificará tu cuenta en minutos.</p>
                   </div>
                   <div style={{ marginBottom:'14px' }}>
                     <label style={{ fontSize:'12px', color:'#666', display:'block', marginBottom:'5px' }}>Correo electrónico *</label>
