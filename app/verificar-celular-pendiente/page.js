@@ -48,6 +48,11 @@ export default function VerificarCelularPendiente() {
           .update({ celular_verificado: true, celular: celular.trim() })
           .eq('id', user.id)
       }
+      fetch('/api/push/enviar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ titulo: '✅ Celular verificado', mensaje: `Un usuario verificó su celular +51 ${celular.trim()}` })
+      })
       window.location.href = '/'
     } else {
       setError('Código incorrecto o expirado. Intenta de nuevo.')

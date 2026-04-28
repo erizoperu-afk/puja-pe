@@ -126,6 +126,11 @@ export default function Login() {
         celular_verificado: false
       })
       setUserId(data.user.id)
+      fetch('/api/push/enviar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ titulo: '👤 Nuevo usuario', mensaje: `${nombre.trim()} ${apellido.trim()} (@${nickname.trim()}) se registró` })
+      })
     }
 
     await fetch('/api/verificar-celular/enviar', {

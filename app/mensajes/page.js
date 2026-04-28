@@ -47,6 +47,11 @@ export default function Mensajes() {
       mensaje: mensaje.trim()
     })
     if (err) { setError('Error al enviar el mensaje.'); setEnviando(false); return }
+    fetch('/api/push/enviar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ titulo: '📩 Nuevo mensaje', mensaje: `Asunto: ${asunto.trim()}` })
+    })
     setAsunto('')
     setMensaje('')
     setExito('¡Mensaje enviado! El equipo de Puja.pe te responderá pronto.')
