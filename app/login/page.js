@@ -43,6 +43,9 @@ export default function Login() {
   const [verPass, setVerPass] = useState(false)
   const [verPassReg, setVerPassReg] = useState(false)
   const [registroExitoso, setRegistroExitoso] = useState(false)
+  const [paso, setPaso] = useState('formulario')
+  const [codigo, setCodigo] = useState('')
+  const [userId, setUserId] = useState(null)
 
   async function handleLogin() {
     setCargando(true)
@@ -90,6 +93,7 @@ export default function Login() {
     if (!nombre.trim()) { setError('El nombre es obligatorio.'); setCargando(false); return }
     if (!apellido.trim()) { setError('El apellido es obligatorio.'); setCargando(false); return }
     if (!nickname.trim()) { setError('El nickname es obligatorio.'); setCargando(false); return }
+    if (!celular.trim() || celular.length < 9) { setError('El celular es obligatorio (9 dígitos).'); setCargando(false); return }
     if (!email.trim()) { setError('El correo es obligatorio.'); setCargando(false); return }
     if (password.length < 6) { setError('La contraseña debe tener mínimo 6 caracteres.'); setCargando(false); return }
 
@@ -120,23 +124,59 @@ export default function Login() {
         celular: celular.trim(),
         celular_verificado: false
       })
-      fetch('/api/push/enviar', {
+      setUserId(data.user.id)
+
+      // Enviar código SMS para validar identidad
+      await fetch('/api/verificar-celular/enviar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          titulo: '⏳ Usuario pendiente de verificar',
-          mensaje: `${nombre.trim()} ${apellido.trim()} (@${nickname.trim()}) está esperando aprobación`
-        })
+        body: JSON.stringify({ celular: celular.trim() })
       })
-
-      // Si hay sesión inmediata (sin confirmación de email), redirigir a espera
-      if (data.session) {
-        window.location.href = '/verificar-celular-pendiente'
-      } else {
-        // Con confirmación de email activada, mostrar mensaje
-        setRegistroExitoso(true)
-      }
+      setPaso('verificando')
     }
+    setCargando(false)
+  }
+
+  async function handleVerificarCodigo() {
+    setCargando(true)
+    setError('')
+    if (!codigo.trim() || codigo.length < 4) {
+      setError('Ingresa el código que recibiste por SMS.')
+      setCargando(false)
+      return
+    }
+    const res = await fetch('/api/verificar-celular/confirmar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ celular: celular.trim(), codigo: codigo.trim() })
+    })
+    if (!res.ok) {
+      setError('Código incorrecto o expirado. Intenta de nuevo.')
+      setCargando(false)
+      return
+    }
+    // SMS confirmado = identidad validada, pero acceso lo da el admin
+    fetch('/api/push/enviar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        titulo: '⏳ Usuario pendiente de verificar',
+        mensaje: `${nombre.trim()} ${apellido.trim()} (@${nickname.trim()}) verificó su celular y espera aprobación`
+      })
+    })
+    window.location.href = '/verificar-celular-pendiente'
+    setCargando(false)
+  }
+
+  async function reenviarCodigo() {
+    setCargando(true)
+    setError('')
+    await fetch('/api/verificar-celular/enviar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ celular: celular.trim() })
+    })
+    setError('Código reenviado ✅')
     setCargando(false)
   }
 
@@ -192,6 +232,31 @@ export default function Login() {
                 </button>
               </div>
             )
+
+          ) : paso === 'verificando' ? (
+            <div>
+              <div style={{ textAlign:'center', marginBottom:'20px' }}>
+                <div style={{ width:'56px', height:'56px', borderRadius:'50%', background:'#E1F5EE', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 16px', fontSize:'24px' }}>📱</div>
+                <h2 style={{ fontSize:'18px', fontWeight:'500', marginBottom:'8px' }}>Confirma tu celular</h2>
+                <p style={{ fontSize:'14px', color:'#666' }}>Te enviamos un código SMS al número <strong>+51 {celular}</strong></p>
+              </div>
+              {error && <div style={{ background: error.includes('✅') ? '#E1F5EE' : '#FCEBEB', color: error.includes('✅') ? '#085041' : '#A32D2D', padding:'10px 14px', borderRadius:'8px', fontSize:'13px', marginBottom:'14px' }}>{error}</div>}
+              <div style={{ marginBottom:'16px' }}>
+                <label style={{ fontSize:'12px', color:'#666', display:'block', marginBottom:'5px' }}>Código de verificación</label>
+                <input type='text' placeholder='Ej: 482931' value={codigo}
+                  onChange={e => setCodigo(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  maxLength={6}
+                  style={{ ...campo, textAlign:'center', fontSize:'24px', letterSpacing:'8px', fontWeight:'500' }} />
+              </div>
+              <button onClick={handleVerificarCodigo} disabled={cargando}
+                style={{ width:'100%', padding:'11px', borderRadius:'8px', border:'none', background: cargando ? '#9FE1CB' : '#1D9E75', color:'white', fontSize:'15px', fontWeight:'500', cursor:'pointer', marginBottom:'12px' }}>
+                {cargando ? 'Verificando...' : 'Confirmar código'}
+              </button>
+              <p style={{ textAlign:'center', fontSize:'12px', color:'#999' }}>
+                ¿No recibiste el código?{' '}
+                <span onClick={reenviarCodigo} style={{ color:'#1D9E75', cursor:'pointer' }}>Reenviar</span>
+              </p>
+            </div>
 
           ) : registroExitoso ? (
             <div style={{ textAlign:'center' }}>
@@ -265,7 +330,7 @@ export default function Login() {
                     <p style={{ fontSize:'11px', color:'#999', marginTop:'4px' }}>Aparecerá en tus pujas y publicaciones.</p>
                   </div>
                   <div style={{ marginBottom:'14px' }}>
-                    <label style={{ fontSize:'12px', color:'#666', display:'block', marginBottom:'5px' }}>Celular (opcional)</label>
+                    <label style={{ fontSize:'12px', color:'#666', display:'block', marginBottom:'5px' }}>Celular *</label>
                     <div style={{ display:'flex', gap:'8px' }}>
                       <span style={{ padding:'10px 12px', borderRadius:'8px', border:'1px solid #ddd', fontSize:'14px', background:'#f9f9f9', color:'#666', whiteSpace:'nowrap' }}>+51</span>
                       <input type="tel" placeholder="999 999 999" value={celular}
