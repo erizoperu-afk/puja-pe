@@ -109,7 +109,7 @@ export default function Login() {
       if (errAuth.message.includes('already registered')) {
         setError('Este correo ya tiene una cuenta registrada.')
       } else {
-        setError('Error al crear cuenta. Intenta de nuevo.')
+        setError('Error: ' + errAuth.message)
       }
       setCargando(false)
       return
