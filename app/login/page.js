@@ -155,16 +155,19 @@ export default function Login() {
       setCargando(false)
       return
     }
-    // SMS confirmado = identidad validada, pero acceso lo da el admin
+    // SMS confirmado = identidad validada = acceso directo
+    if (userId) {
+      await supabase.from('usuarios').update({ celular_verificado: true }).eq('id', userId)
+    }
     fetch('/api/push/enviar', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        titulo: '⏳ Usuario pendiente de verificar',
-        mensaje: `${nombre.trim()} ${apellido.trim()} (@${nickname.trim()}) verificó su celular y espera aprobación`
+        titulo: '👤 Nuevo usuario registrado',
+        mensaje: `${nombre.trim()} ${apellido.trim()} (@${nickname.trim()}) se registró y verificó su celular`
       })
     })
-    window.location.href = '/verificar-celular-pendiente'
+    window.location.href = '/'
     setCargando(false)
   }
 
