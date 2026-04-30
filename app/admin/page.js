@@ -119,16 +119,12 @@ export default function PanelAdmin() {
 
   async function crearOrganizador() {
     setCreandoOrganizador(true)
-    const { data: usuarioData } = await supabase.from('usuarios').select('id').eq('nickname', formOrganizador.usuario_email.trim()).maybeSingle()
-    const usuario_id = usuarioData?.id || null
-    const { error } = await supabase.from('organizadores_especiales').insert({
-      nombre_organizacion: formOrganizador.nombre_organizacion.trim(),
-      codigo_acceso: formOrganizador.codigo_acceso.trim(),
-      whatsapp: formOrganizador.whatsapp.trim(),
-      email: formOrganizador.email.trim(),
-      usuario_id
+    const res = await fetch('/api/admin/crear-organizador', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...formOrganizador, adminEmail: sessionUser?.email })
     })
-    if (!error) {
+    if (res.ok) {
       setFormOrganizador({ nombre_organizacion:'', codigo_acceso:'', whatsapp:'', email:'', usuario_email:'' })
       const { data } = await supabase.from('organizadores_especiales').select('*').order('created_at', { ascending: false })
       setOrganizadores(data || [])
