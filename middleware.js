@@ -1,7 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse } from 'next/server'
 
-const RUTAS_PROTEGIDAS = ['/vendedor', '/mensajes', '/comprador', '/favoritos', '/perfil']
+const RUTAS_PROTEGIDAS = ['/vendedor', '/mensajes', '/comprador', '/favoritos', '/perfil', '/acceso-especial', '/organizador']
 const RUTAS_ADMIN = ['/admin']
 
 export async function middleware(request) {
@@ -62,5 +62,5 @@ export async function middleware(request) {
 }
 
 export const config = {
-  matcher: ['/vendedor/:path*', '/mensajes/:path*', '/comprador/:path*', '/favoritos/:path*', '/perfil/:path*', '/admin/:path*'],
+  matcher: ['/vendedor/:path*', '/mensajes/:path*', '/comprador/:path*', '/favoritos/:path*', '/perfil/:path*', '/admin/:path*', '/acceso-especial/:path*', '/organizador/:path*'],
 }

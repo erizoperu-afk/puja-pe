@@ -31,6 +31,9 @@ export default function PanelAdmin() {
   const [respondiendo, setRespondiendo] = useState(null)
   const [pendientesVerificacion, setPendientesVerificacion] = useState([])
   const [pagina, setPagina] = useState(1)
+  const [organizadores, setOrganizadores] = useState([])
+  const [formOrganizador, setFormOrganizador] = useState({ nombre_organizacion:'', codigo_acceso:'', whatsapp:'', email:'', usuario_email:'' })
+  const [creandoOrganizador, setCreandoOrganizador] = useState(false)
 
   useEffect(() => { verificarAdmin() }, [])
   useEffect(() => { setPagina(1) }, [tab])
@@ -109,7 +112,34 @@ export default function PanelAdmin() {
       totalPujas: pujasData?.length || 0,
     })
     setPendientesVerificacion((usuariosData || []).filter(u => !u.celular_verificado))
+    const { data: orgsData } = await supabase.from('organizadores_especiales').select('*').order('created_at', { ascending: false })
+    setOrganizadores(orgsData || [])
     setCargando(false)
+  }
+
+  async function crearOrganizador() {
+    setCreandoOrganizador(true)
+    const { data: usuarioData } = await supabase.from('usuarios').select('id').eq('nickname', formOrganizador.usuario_email.trim()).maybeSingle()
+    const usuario_id = usuarioData?.id || null
+    const { error } = await supabase.from('organizadores_especiales').insert({
+      nombre_organizacion: formOrganizador.nombre_organizacion.trim(),
+      codigo_acceso: formOrganizador.codigo_acceso.trim(),
+      whatsapp: formOrganizador.whatsapp.trim(),
+      email: formOrganizador.email.trim(),
+      usuario_id
+    })
+    if (!error) {
+      setFormOrganizador({ nombre_organizacion:'', codigo_acceso:'', whatsapp:'', email:'', usuario_email:'' })
+      const { data } = await supabase.from('organizadores_especiales').select('*').order('created_at', { ascending: false })
+      setOrganizadores(data || [])
+    }
+    setCreandoOrganizador(false)
+  }
+
+  async function toggleOrganizador(id, activo) {
+    await supabase.from('organizadores_especiales').update({ activo: !activo }).eq('id', id)
+    const { data } = await supabase.from('organizadores_especiales').select('*').order('created_at', { ascending: false })
+    setOrganizadores(data || [])
   }
 
   async function cargarMensajes() {
@@ -359,6 +389,7 @@ export default function PanelAdmin() {
             { key:'calificaciones', label:'Calificaciones', count: null,                          badge: false, href: '/admin/calificaciones' },
             { key:'beta',           label:'Modo BETA',      count: null,                          badge: false, href: null },
             { key:'paquetes',       label:'Paquetes',       count: null,                          badge: false, href: null },
+            { key:'organizadores',  label:'Remates Especiales', count: organizadores.length,      badge: false, href: null },
           ].map(t => (
             t.href ? (
               <a key={t.key} href={t.href} style={{ ...estilo.tab(false), textDecoration:'none' }}>
@@ -676,6 +707,82 @@ export default function PanelAdmin() {
                 )}
               </div>
             ))}
+          </div>
+        )}
+
+        {/* ORGANIZADORES ESPECIALES */}
+        {tab === 'organizadores' && (
+          <div style={estilo.card}>
+            <h2 style={{ fontSize:'16px', fontWeight:'500', marginBottom:'16px' }}>Remates Especiales — Organizadores</h2>
+
+            {/* Formulario crear organizador */}
+            <div style={{ background:'#f9f9f9', borderRadius:'10px', padding:'16px', marginBottom:'20px' }}>
+              <p style={{ fontSize:'13px', fontWeight:'500', color:'#444', marginBottom:'12px' }}>Crear nuevo organizador</p>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px', marginBottom:'10px' }}>
+                <div>
+                  <label style={{ fontSize:'11px', color:'#666', display:'block', marginBottom:'3px' }}>Nombre de organización *</label>
+                  <input value={formOrganizador.nombre_organizacion} onChange={e => setFormOrganizador({...formOrganizador, nombre_organizacion: e.target.value})}
+                    placeholder='Ej: MALI, Club Numismático'
+                    style={{ width:'100%', padding:'8px 10px', borderRadius:'8px', border:'1px solid #ddd', fontSize:'13px', boxSizing:'border-box' }} />
+                </div>
+                <div>
+                  <label style={{ fontSize:'11px', color:'#666', display:'block', marginBottom:'3px' }}>Código de acceso *</label>
+                  <input value={formOrganizador.codigo_acceso} onChange={e => setFormOrganizador({...formOrganizador, codigo_acceso: e.target.value})}
+                    placeholder='Ej: MALI2025'
+                    style={{ width:'100%', padding:'8px 10px', borderRadius:'8px', border:'1px solid #ddd', fontSize:'13px', boxSizing:'border-box' }} />
+                </div>
+                <div>
+                  <label style={{ fontSize:'11px', color:'#666', display:'block', marginBottom:'3px' }}>WhatsApp</label>
+                  <input value={formOrganizador.whatsapp} onChange={e => setFormOrganizador({...formOrganizador, whatsapp: e.target.value})}
+                    placeholder='+51 999 999 999'
+                    style={{ width:'100%', padding:'8px 10px', borderRadius:'8px', border:'1px solid #ddd', fontSize:'13px', boxSizing:'border-box' }} />
+                </div>
+                <div>
+                  <label style={{ fontSize:'11px', color:'#666', display:'block', marginBottom:'3px' }}>Email de contacto</label>
+                  <input value={formOrganizador.email} onChange={e => setFormOrganizador({...formOrganizador, email: e.target.value})}
+                    placeholder='contacto@organizacion.com'
+                    style={{ width:'100%', padding:'8px 10px', borderRadius:'8px', border:'1px solid #ddd', fontSize:'13px', boxSizing:'border-box' }} />
+                </div>
+                <div style={{ gridColumn:'1/-1' }}>
+                  <label style={{ fontSize:'11px', color:'#666', display:'block', marginBottom:'3px' }}>Nickname del usuario organizador (opcional)</label>
+                  <input value={formOrganizador.usuario_email} onChange={e => setFormOrganizador({...formOrganizador, usuario_email: e.target.value})}
+                    placeholder='nickname del organizador en puja.pe'
+                    style={{ width:'100%', padding:'8px 10px', borderRadius:'8px', border:'1px solid #ddd', fontSize:'13px', boxSizing:'border-box' }} />
+                </div>
+              </div>
+              <button onClick={crearOrganizador} disabled={creandoOrganizador || !formOrganizador.nombre_organizacion || !formOrganizador.codigo_acceso}
+                style={{ padding:'9px 20px', background:'#1D9E75', color:'white', border:'none', borderRadius:'8px', fontSize:'13px', cursor:'pointer', fontWeight:'500' }}>
+                {creandoOrganizador ? 'Creando...' : '+ Crear organizador'}
+              </button>
+            </div>
+
+            {/* Lista de organizadores */}
+            {organizadores.length === 0 ? (
+              <p style={{ fontSize:'13px', color:'#999', textAlign:'center', padding:'20px' }}>No hay organizadores creados aún.</p>
+            ) : (
+              organizadores.map(org => (
+                <div key={org.id} style={{ border:'1px solid #eee', borderRadius:'10px', padding:'14px', marginBottom:'10px', opacity: org.activo ? 1 : 0.5 }}>
+                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
+                    <div>
+                      <p style={{ fontWeight:'500', fontSize:'14px', marginBottom:'4px' }}>{org.nombre_organizacion}</p>
+                      <p style={{ fontSize:'12px', color:'#666', marginBottom:'2px' }}>Código: <strong>{org.codigo_acceso}</strong></p>
+                      {org.whatsapp && <p style={{ fontSize:'12px', color:'#666', marginBottom:'2px' }}>WhatsApp: {org.whatsapp}</p>}
+                      {org.email && <p style={{ fontSize:'12px', color:'#666' }}>Email: {org.email}</p>}
+                    </div>
+                    <div style={{ display:'flex', gap:'8px' }}>
+                      <a href={`/organizador/${org.id}`} target='_blank'
+                        style={{ padding:'7px 14px', borderRadius:'8px', border:'1px solid #1D9E75', color:'#1D9E75', fontSize:'12px', textDecoration:'none', fontWeight:'500' }}>
+                        Panel
+                      </a>
+                      <button onClick={() => toggleOrganizador(org.id, org.activo)}
+                        style={{ padding:'7px 14px', borderRadius:'8px', border:'none', background: org.activo ? '#FCEBEB' : '#E1F5EE', color: org.activo ? '#A32D2D' : '#085041', fontSize:'12px', cursor:'pointer', fontWeight:'500' }}>
+                        {org.activo ? 'Desactivar' : 'Activar'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         )}
 

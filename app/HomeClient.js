@@ -128,6 +128,7 @@ export default function HomeClient({ q }) {
   const [remates, setRemates] = useState([])
   const [hot, setHot] = useState([])
   const [nuevos, setNuevos] = useState([])
+  const [rematesEspeciales, setRematesEspeciales] = useState([])
   const [inputBusqueda, setInputBusqueda] = useState(q)
   const [cargando, setCargando] = useState(true)
   const [pagina, setPagina] = useState(1)
@@ -142,6 +143,13 @@ export default function HomeClient({ q }) {
         .order('created_at', { ascending: false })
       const rematesActivos = data || []
       setRemates(rematesActivos)
+
+      const { data: especiales } = await supabase
+        .from('remates_especiales')
+        .select('*, organizadores_especiales(nombre_organizacion, whatsapp, email)')
+        .eq('activo', true)
+        .order('fecha_inicio', { ascending: true })
+      setRematesEspeciales(especiales || [])
       const { data: pujasData } = await supabase.from('pujas').select('remate_id')
       const conteo = {}
       pujasData?.forEach(p => { conteo[p.remate_id] = (conteo[p.remate_id] || 0) + 1 })
@@ -221,6 +229,39 @@ export default function HomeClient({ q }) {
           <button onClick={buscar} style={{ padding:'10px 16px', background:'#1D9E75', color:'white', border:'none', borderRadius:'8px', cursor:'pointer', fontWeight:'500', whiteSpace:'nowrap' }}>Buscar</button>
         </div>
       </section>
+
+      {/* REMATES ESPECIALES */}
+      {!cargando && rematesEspeciales.length > 0 && !busquedaActiva && (
+        <section style={{ padding:'24px 16px', maxWidth:'1200px', margin:'0 auto', borderTop:'1px solid #eee' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:'8px', marginBottom:'16px', flexWrap:'wrap' }}>
+            <span style={{ fontSize:'18px' }}>🏛️</span>
+            <h2 style={{ fontSize:'18px', fontWeight:'700', letterSpacing:'0.5px' }}>REMATES ESPECIALES</h2>
+          </div>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(200px, 1fr))', gap:'12px' }}>
+            {rematesEspeciales.map(r => (
+              <a key={r.id} href={`/remate-especial/${r.id}`} style={{ textDecoration:'none', color:'black' }}>
+                <div style={{ background:'#fff', border:'2px solid #C9A84C', borderRadius:'12px', overflow:'hidden' }}>
+                  <div style={{ height:'140px', background:'#f5f5f5', overflow:'hidden', position:'relative' }}>
+                    {r.imagenes_url?.[0]
+                      ? <img src={r.imagenes_url[0]} alt={r.titulo} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+                      : <div style={{ width:'100%', height:'100%', background:'#e0e0e0' }} />}
+                    <div style={{ position:'absolute', top:'8px', left:'8px', background:'#C9A84C', color:'white', fontSize:'10px', fontWeight:'700', padding:'2px 8px', borderRadius:'20px' }}>
+                      🏛️ {r.organizadores_especiales?.nombre_organizacion}
+                    </div>
+                  </div>
+                  <div style={{ padding:'12px' }}>
+                    <p style={{ fontWeight:'500', fontSize:'13px', marginBottom:'4px' }}>{r.titulo}</p>
+                    <p style={{ fontSize:'16px', fontWeight:'500', color:'#C9A84C', marginBottom:'4px' }}>S/ {Number(r.precio_base).toLocaleString()}</p>
+                    <p style={{ fontSize:'11px', color:'#999' }}>
+                      Desde {new Date(r.fecha_inicio).toLocaleDateString('es-PE', { day:'numeric', month:'short' })}
+                    </p>
+                  </div>
+                </div>
+              </a>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* LOS REMATES MAS HOT */}
       {!cargando && hot.length > 0 && !busquedaActiva && (
