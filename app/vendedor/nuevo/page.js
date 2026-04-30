@@ -517,14 +517,28 @@ export default function NuevoRemate() {
     : []
 
   useEffect(() => {
-    async function cargarCreditos() {
+    async function cargarDatos() {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) return
       const { data: cred } = await supabase
         .from('creditos').select('saldo').eq('usuario_id', session.user.id).maybeSingle()
       setCreditos(cred?.saldo ?? 0)
+
+      // Pre-rellenar con la última ubicación usada
+      const { data: ultimoRemate } = await supabase
+        .from('remates')
+        .select('ubicacion')
+        .eq('vendedor_id', session.user.id)
+        .not('ubicacion', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      if (ultimoRemate?.ubicacion) {
+        setForm(f => ({ ...f, ubicacion: ultimoRemate.ubicacion }))
+        setBusquedaUbicacion(ultimoRemate.ubicacion)
+      }
     }
-    cargarCreditos()
+    cargarDatos()
   }, [])
 
   useEffect(() => {
