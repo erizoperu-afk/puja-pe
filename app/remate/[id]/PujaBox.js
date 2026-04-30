@@ -258,7 +258,8 @@ export default function PujaBox({ remate }) {
     return score >= 0 ? `+${score}` : `${score}`
   }
 
-  const h = Math.floor(segundos / 3600)
+  const d = Math.floor(segundos / 86400)
+  const h = Math.floor((segundos % 86400) / 3600)
   const m = Math.floor((segundos % 3600) / 60)
   const s = segundos % 60
   const pad = n => String(n).padStart(2, '0')
@@ -280,7 +281,7 @@ export default function PujaBox({ remate }) {
           <div style={{ background:'#f9f9f9', borderRadius:'8px', padding:'12px', textAlign:'center', marginBottom:'16px' }}>
             <p style={{ fontSize:'11px', color:'#999', marginBottom:'6px' }}>Tiempo restante</p>
             <div style={{ display:'flex', justifyContent:'center', gap:'8px' }}>
-              {[['h', h], ['m', m], ['s', s]].map(([lbl, val], i, arr) => (
+              {(d > 0 ? [['d', d], ['h', h], ['m', m], ['s', s]] : [['h', h], ['m', m], ['s', s]]).map(([lbl, val], i, arr) => (
                 <>
                   <div key={lbl} style={{ textAlign:'center' }}>
                     <div style={{ fontSize:'24px', fontWeight:'500', color: vencido ? '#999' : '#A32D2D', fontFamily:'monospace' }}>{pad(val)}</div>

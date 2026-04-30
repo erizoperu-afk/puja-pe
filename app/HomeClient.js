@@ -28,14 +28,15 @@ function TiempoRestante({ fechaFin, tipoPub }) {
         const dias = Math.ceil(diff / (1000 * 60 * 60 * 24))
         setTexto(dias === 1 ? '1 dia restante' : `${dias} dias restantes`)
       } else {
-        const h = Math.floor(diff / 3600000)
+        const d = Math.floor(diff / 86400000)
+        const h = Math.floor((diff % 86400000) / 3600000)
         const m = Math.floor((diff % 3600000) / 60000)
         const s = Math.floor((diff % 60000) / 1000)
-        if (h > 24) {
-          const dias = Math.floor(h / 24)
-          setTexto(dias === 1 ? '1 dia restante' : `${dias} dias restantes`)
+        const pad = n => String(n).padStart(2, '0')
+        if (d > 0) {
+          setTexto(`${d}d ${pad(h)}:${pad(m)}:${pad(s)}`)
         } else {
-          setTexto(`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`)
+          setTexto(`${pad(h)}:${pad(m)}:${pad(s)}`)
         }
       }
     }
