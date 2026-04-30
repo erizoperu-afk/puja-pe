@@ -4,6 +4,21 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../../supabase'
 import Navbar from '../../Navbar'
 
+function comprimirImagen(file, maxWidth = 1200, quality = 0.82) {
+  return new Promise((resolve) => {
+    const img = new Image()
+    img.onload = () => {
+      let { width, height } = img
+      if (width > maxWidth) { height = Math.round(height * maxWidth / width); width = maxWidth }
+      const canvas = document.createElement('canvas')
+      canvas.width = width; canvas.height = height
+      canvas.getContext('2d').drawImage(img, 0, 0, width, height)
+      canvas.toBlob(blob => resolve(blob), 'image/jpeg', quality)
+    }
+    img.src = URL.createObjectURL(file)
+  })
+}
+
 const UBICACIONES = [
   'AMAZONAS - BAGUA - BAGUA',
   'AMAZONAS - BAGUA - ARAMANGO',
@@ -595,9 +610,10 @@ export default function NuevoRemate() {
     let imagen_url = null
     let imagenes_url = []
     for (let i = 0; i < fotos.length; i++) {
-      const nombreArchivo = session.user.id + '_' + Date.now() + '_' + i + '_' + fotos[i].name
+      const nombreArchivo = session.user.id + '_' + Date.now() + '_' + i + '.jpg'
+      const comprimida = await comprimirImagen(fotos[i])
       const fd = new FormData()
-      fd.append('file', fotos[i])
+      fd.append('file', comprimida, nombreArchivo)
       fd.append('key', nombreArchivo)
       const uploadRes = await fetch('/api/upload', { method: 'POST', body: fd })
       if (!uploadRes.ok) { setError('Error al subir foto.'); setCargando(false); return }

@@ -4,6 +4,21 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../supabase'
 import Navbar from '../Navbar'
 
+function comprimirImagen(file, maxWidth = 1200, quality = 0.82) {
+  return new Promise((resolve) => {
+    const img = new Image()
+    img.onload = () => {
+      let { width, height } = img
+      if (width > maxWidth) { height = Math.round(height * maxWidth / width); width = maxWidth }
+      const canvas = document.createElement('canvas')
+      canvas.width = width; canvas.height = height
+      canvas.getContext('2d').drawImage(img, 0, 0, width, height)
+      canvas.toBlob(blob => resolve(blob), 'image/jpeg', quality)
+    }
+    img.src = URL.createObjectURL(file)
+  })
+}
+
 const POR_PAGINA = 6
 
 const CATEGORIAS = [
@@ -120,9 +135,10 @@ export default function PanelVendedor() {
     if (fotosActivo.length > 0) {
       const { data: { session: s } } = await supabase.auth.getSession()
       for (let i = 0; i < fotosActivo.length; i++) {
-        const nombreArchivo = s.user.id + '_' + Date.now() + '_' + i + '_' + fotosActivo[i].name
+        const nombreArchivo = s.user.id + '_' + Date.now() + '_' + i + '.jpg'
+        const comprimida = await comprimirImagen(fotosActivo[i])
         const fd = new FormData()
-        fd.append('file', fotosActivo[i])
+        fd.append('file', comprimida, nombreArchivo)
         fd.append('key', nombreArchivo)
         const uploadRes = await fetch('/api/upload', { method: 'POST', body: fd })
         if (uploadRes.ok) {
