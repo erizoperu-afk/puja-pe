@@ -27,6 +27,7 @@ export default function Navbar() {
   const [usuario, setUsuario] = useState(null)
   const [perfil, setPerfil] = useState(null)
   const [esAdmin, setEsAdmin] = useState(false)
+  const [panelOrganizador, setPanelOrganizador] = useState(null)
   const [menuAbierto, setMenuAbierto] = useState(false)
   const pathname = usePathname()
 
@@ -41,8 +42,16 @@ export default function Navbar() {
           .eq('id', session.user.id)
           .single()
         setPerfil(data)
+        const { data: org } = await supabase
+          .from('organizadores_especiales')
+          .select('id, nombre_organizacion')
+          .eq('usuario_id', session.user.id)
+          .eq('activo', true)
+          .maybeSingle()
+        setPanelOrganizador(org || null)
       } else {
         setPerfil(null)
+        setPanelOrganizador(null)
       }
     }
 
@@ -119,6 +128,7 @@ export default function Navbar() {
               <a href='/comprador' style={btnStyle('/comprador')}>Comprador</a>
               <a href='/vendedor' style={btnStyle('/vendedor')}>Vendedor</a>
               <a href='/mensajes' style={btnStyle('/mensajes')}>Soporte</a>
+              {panelOrganizador && <a href={`/organizador/${panelOrganizador.id}`} style={{ ...btnStyle('/organizador'), background:'#1a1a2e', color:'#C9A84C', border:'none' }}>🏛️ {panelOrganizador.nombre_organizacion}</a>}
               {esAdmin && <a href='/admin' style={btnStyle('/admin')}>Admin</a>}
               <button onClick={cerrarSesion} style={{ padding:'7px 16px', borderRadius:'8px', border:'1px solid #ddd', background:'transparent', cursor:'pointer', fontSize:'13px', fontWeight:'700' }}>Cerrar sesion</button>
             </>
@@ -150,6 +160,7 @@ export default function Navbar() {
               <a href='/comprador' style={linkStyleActivo('/comprador')}>Comprador</a>
               <a href='/vendedor' style={linkStyleActivo('/vendedor')}>Vendedor</a>
               <a href='/mensajes' style={linkStyleActivo('/mensajes')}>Soporte</a>
+              {panelOrganizador && <a href={`/organizador/${panelOrganizador.id}`} style={{ ...linkStyleActivo('/organizador'), color:'#C9A84C', fontWeight:'700' }}>🏛️ {panelOrganizador.nombre_organizacion}</a>}
               {esAdmin && <a href='/admin' style={linkStyleActivo('/admin')}>Admin</a>}
               <button onClick={cerrarSesion} style={{ ...linkStyle, background:'none', border:'none', cursor:'pointer', width:'100%', textAlign:'left', color:'#A32D2D' }}>Cerrar sesion</button>
             </>
