@@ -497,7 +497,7 @@ export default function NuevoRemate() {
   const [creditos, setCreditos] = useState(null)
   const [form, setForm] = useState({
     titulo: '', descripcion: '', precio_inicial: '',
-    precio_directo: '', incremento_minimo: '20',
+    precio_directo: '', incremento_minimo: '1',
     categoria: '', condicion: 'Como nuevo',
     ubicacion: '', duracion: '3',
     fecha_inicio: '', hora_inicio: ''
