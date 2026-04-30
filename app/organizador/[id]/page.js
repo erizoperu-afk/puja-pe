@@ -92,25 +92,30 @@ export default function PanelOrganizador({ params }) {
     const fechaInicio = new Date(form.fecha_inicio + 'T' + form.hora_inicio).toISOString()
     const fechaFin = new Date(form.fecha_fin + 'T' + form.hora_fin).toISOString()
 
-    const { error: err } = await supabase.from('remates_especiales').insert({
-      organizador_id: organizadorId,
-      titulo: form.titulo.trim(),
-      descripcion: form.descripcion.trim(),
-      precio_base: Number(form.precio_base),
-      imagenes_url,
-      material: form.material.trim() || null,
-      anio: form.anio.trim() || null,
-      autor: form.autor.trim() || null,
-      lugar_origen: form.lugar_origen.trim() || null,
-      periodo: form.periodo.trim() || null,
-      marca: form.marca.trim() || null,
-      estilo: form.estilo.trim() || null,
-      fecha_inicio: fechaInicio,
-      fecha_fin: fechaFin,
-      activo: true
+    const res = await fetch('/api/organizador/publicar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        organizadorId,
+        userEmail: session.user.email,
+        titulo: form.titulo.trim(),
+        descripcion: form.descripcion.trim(),
+        precio_base: Number(form.precio_base),
+        imagenes_url,
+        material: form.material.trim() || null,
+        anio: form.anio.trim() || null,
+        autor: form.autor.trim() || null,
+        lugar_origen: form.lugar_origen.trim() || null,
+        periodo: form.periodo.trim() || null,
+        marca: form.marca.trim() || null,
+        estilo: form.estilo.trim() || null,
+        fecha_inicio: fechaInicio,
+        fecha_fin: fechaFin,
+        activo: true
+      })
     })
 
-    if (err) { setError('Error al publicar: ' + err.message); setPublicando(false); return }
+    if (!res.ok) { const d = await res.json(); setError('Error al publicar: ' + d.error); setPublicando(false); return }
 
     const { data: rematesData } = await supabase.from('remates_especiales').select('*').eq('organizador_id', organizadorId).order('created_at', { ascending: false })
     setRemates(rematesData || [])
