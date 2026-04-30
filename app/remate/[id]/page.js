@@ -4,6 +4,7 @@ import PujaBox from './PujaBox'
 import GaleriaFotos from './galeriaFotos'
 import BotonFavorito from './BotonFavorito'
 import BotonCompartir from './BotonCompartir'
+import PreguntasYRespuestas from './PreguntasYRespuestas'
 
 export async function generateMetadata({ params }) {
   const { id } = await params
@@ -112,6 +113,7 @@ export default async function PaginaRemate({ params }) {
                 </div>
               ))}
             </div>
+            <PreguntasYRespuestas remateId={remate.id} vendedorId={remate.vendedor_id} />
           </div>
         </div>
       </div>
