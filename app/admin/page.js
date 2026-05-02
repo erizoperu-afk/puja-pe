@@ -6,6 +6,10 @@ import Navbar from '../Navbar'
 
 const POR_PAGINA = 6
 
+function codigoUsuario(id) {
+  return '#' + id.replace(/-/g, '').substring(0, 6).toUpperCase()
+}
+
 export default function PanelAdmin() {
   const [tab, setTab] = useState('usuarios')
   const [usuarios, setUsuarios] = useState([])
@@ -32,11 +36,15 @@ export default function PanelAdmin() {
   const [pendientesVerificacion, setPendientesVerificacion] = useState([])
   const [pagina, setPagina] = useState(1)
   const [organizadores, setOrganizadores] = useState([])
-  const [formOrganizador, setFormOrganizador] = useState({ nombre_organizacion:'', codigo_acceso:'', whatsapp:'', email:'', usuario_email:'' })
+  const [formOrganizador, setFormOrganizador] = useState({ nombre_organizacion:'', codigo_acceso:'', whatsapp:'', email:'', usuario_id: null })
   const [creandoOrganizador, setCreandoOrganizador] = useState(false)
+  const [filtroUsuarios, setFiltroUsuarios] = useState('')
+  const [buscarCodigo, setBuscarCodigo] = useState('')
+  const [usuarioEncontrado, setUsuarioEncontrado] = useState(null)
+  const [buscandoUsuario, setBuscandoUsuario] = useState(false)
 
   useEffect(() => { verificarAdmin() }, [])
-  useEffect(() => { setPagina(1) }, [tab])
+  useEffect(() => { setPagina(1) }, [tab, filtroUsuarios])
 
   async function verificarAdmin() {
     const { data: { session } } = await supabase.auth.getSession()
@@ -46,7 +54,7 @@ export default function PanelAdmin() {
       .from('admins').select('email').eq('email', session.user.email).single()
     if (!admin) { window.location.href = '/'; return }
     setAutorizado(true)
-    cargarDatos()
+    cargarDatos(session.user.email)
   }
 
   async function suscribirPush() {
@@ -69,52 +77,89 @@ export default function PanelAdmin() {
     }
   }
 
-  async function enviarPushAdmin(titulo, mensaje) {
-    await fetch('/api/push/enviar', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ titulo, mensaje })
-    })
-  }
+  async function cargarDatos(adminEmail) {
+    const email = adminEmail || sessionUser?.email
 
-  async function cargarDatos() {
-    const { data: usuariosData } = await supabase
-      .from('usuarios').select('*').order('created_at', { ascending: false })
-    const { data: creditosData } = await supabase.from('creditos').select('*')
-    const { data: rematesData } = await supabase
-      .from('remates').select('*').order('created_at', { ascending: false })
-    const { data: pujasData } = await supabase.from('pujas').select('*')
+    const [usuariosRes, rematesRes, mensajesRes, orgsRes] = await Promise.all([
+      fetch(`/api/admin/usuarios?adminEmail=${encodeURIComponent(email || '')}`),
+      supabase.from('remates').select('*').order('created_at', { ascending: false }),
+      supabase.from('mensajes').select('*').order('created_at', { ascending: false }),
+      supabase.from('organizadores_especiales').select('*').order('created_at', { ascending: false }),
+    ])
 
-    const { data: mensajesRaw } = await supabase
-      .from('mensajes').select('*').order('created_at', { ascending: false })
-    const userIdsMensajes = [...new Set((mensajesRaw || []).map(m => m.usuario_id))]
-    const { data: usuariosMensajes } = await supabase
-      .from('usuarios').select('id, nickname').in('id', userIdsMensajes)
-    const mensajesConNick = (mensajesRaw || []).map(m => ({
-      ...m,
-      usuarios: { nickname: usuariosMensajes?.find(u => u.id === m.usuario_id)?.nickname || 'Usuario' }
-    }))
+    const usuariosJSON = await usuariosRes.json()
+    const usuariosData = usuariosJSON.usuarios || []
+    const rematesData = rematesRes.data || []
+    const mensajesRaw = mensajesRes.data || []
 
-    const usuariosConCreditos = (usuariosData || []).map(u => ({
-      ...u,
-      creditos: creditosData?.find(c => c.usuario_id === u.id)?.saldo ?? 0,
-      totalPujas: pujasData?.filter(p => p.usuario_id === u.id).length || 0,
-      totalRemates: rematesData?.filter(r => r.vendedor_id === u.id).length || 0,
-    }))
+    const userIdsMensajes = [...new Set(mensajesRaw.map(m => m.usuario_id))]
+    let mensajesConNick = mensajesRaw
+    if (userIdsMensajes.length > 0) {
+      const { data: usuariosMensajes } = await supabase
+        .from('usuarios').select('id, nickname').in('id', userIdsMensajes)
+      mensajesConNick = mensajesRaw.map(m => ({
+        ...m,
+        usuarios: { nickname: usuariosMensajes?.find(u => u.id === m.usuario_id)?.nickname || 'Usuario' }
+      }))
+    }
 
-    setUsuarios(usuariosConCreditos)
-    setRemates(rematesData || [])
+    setUsuarios(usuariosData)
+    setRemates(rematesData)
     setMensajes(mensajesConNick)
     setStats({
-      totalUsuarios: usuariosData?.length || 0,
-      totalRemates: rematesData?.length || 0,
-      rematesActivos: rematesData?.filter(r => r.activo).length || 0,
-      totalPujas: pujasData?.length || 0,
+      totalUsuarios: usuariosData.length,
+      totalRemates: rematesData.length,
+      rematesActivos: rematesData.filter(r => r.activo).length,
+      totalPujas: usuariosData.reduce((sum, u) => sum + (u.totalPujas || 0), 0),
     })
-    setPendientesVerificacion((usuariosData || []).filter(u => !u.celular_verificado))
-    const { data: orgsData } = await supabase.from('organizadores_especiales').select('*').order('created_at', { ascending: false })
-    setOrganizadores(orgsData || [])
+    setPendientesVerificacion(usuariosData.filter(u => !u.celular_verificado))
+    setOrganizadores(orgsRes.data || [])
     setCargando(false)
+  }
+
+  function exportarCSV() {
+    const headers = ['Código', 'Nombre', 'Apellido', 'Nickname', 'Email', 'Teléfono', 'Verificado', 'Créditos', 'Pujas', 'Remates', 'Registrado']
+    const rows = usuarios.map(u => [
+      codigoUsuario(u.id),
+      u.nombre || '',
+      u.apellido || '',
+      u.nickname || '',
+      u.email || '',
+      u.celular ? `+51 ${u.celular.slice(0,3)} ${u.celular.slice(3,6)} ${u.celular.slice(6)}` : '',
+      u.celular_verificado ? 'Sí' : 'No',
+      u.creditos,
+      u.totalPujas,
+      u.totalRemates,
+      new Date(u.created_at).toLocaleDateString('es-PE'),
+    ])
+    const csv = [headers, ...rows]
+      .map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(';'))
+      .join('\n')
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement('a')
+    link.href = URL.createObjectURL(blob)
+    link.download = `usuarios-puja-${new Date().toISOString().split('T')[0]}.csv`
+    link.click()
+  }
+
+  async function buscarUsuarioOrganizador() {
+    if (!buscarCodigo.trim()) return
+    setBuscandoUsuario(true)
+    setUsuarioEncontrado(null)
+    const res = await fetch(`/api/admin/buscar-usuario?codigo=${encodeURIComponent(buscarCodigo.trim())}&adminEmail=${encodeURIComponent(sessionUser?.email || '')}`)
+    if (res.ok) {
+      const { usuario } = await res.json()
+      setUsuarioEncontrado(usuario)
+      setFormOrganizador(f => ({
+        ...f,
+        whatsapp: usuario.celular ? '+51' + usuario.celular : f.whatsapp,
+        email: usuario.email || f.email,
+        usuario_id: usuario.id,
+      }))
+    } else {
+      setUsuarioEncontrado({ error: true })
+    }
+    setBuscandoUsuario(false)
   }
 
   async function crearOrganizador() {
@@ -125,7 +170,9 @@ export default function PanelAdmin() {
       body: JSON.stringify({ ...formOrganizador, adminEmail: sessionUser?.email })
     })
     if (res.ok) {
-      setFormOrganizador({ nombre_organizacion:'', codigo_acceso:'', whatsapp:'', email:'', usuario_email:'' })
+      setFormOrganizador({ nombre_organizacion:'', codigo_acceso:'', whatsapp:'', email:'', usuario_id: null })
+      setBuscarCodigo('')
+      setUsuarioEncontrado(null)
       const { data } = await supabase.from('organizadores_especiales').select('*').order('created_at', { ascending: false })
       setOrganizadores(data || [])
     }
@@ -134,6 +181,18 @@ export default function PanelAdmin() {
 
   async function toggleOrganizador(id, activo) {
     await supabase.from('organizadores_especiales').update({ activo: !activo }).eq('id', id)
+    const { data } = await supabase.from('organizadores_especiales').select('*').order('created_at', { ascending: false })
+    setOrganizadores(data || [])
+  }
+
+  async function eliminarOrganizador(id, nombre) {
+    if (!confirm(`¿Eliminar permanentemente el organizador "${nombre}"? Sus remates especiales no se eliminarán.`)) return
+    const res = await fetch('/api/admin/eliminar-organizador', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ organizadorId: id, adminEmail: sessionUser?.email })
+    })
+    if (!res.ok) { const d = await res.json(); alert(d.error || 'Error al eliminar'); return }
     const { data } = await supabase.from('organizadores_especiales').select('*').order('created_at', { ascending: false })
     setOrganizadores(data || [])
   }
@@ -303,7 +362,7 @@ export default function PanelAdmin() {
           ← Volver al panel
         </button>
         <h2 style={{ fontSize:'18px', fontWeight:'500', marginBottom:'20px' }}>
-          {modoDetalle === 'pujas' ? 'Pujas de' : 'Remates de'} {usuarioDetalle.nickname}
+          {modoDetalle === 'pujas' ? 'Pujas de' : 'Remates de'} {usuarioDetalle.nombre} {usuarioDetalle.apellido} (@{usuarioDetalle.nickname})
         </h2>
         {modoDetalle === 'pujas' && (
           <div>
@@ -352,6 +411,19 @@ export default function PanelAdmin() {
     </main>
   )
 
+  const usuariosFiltrados = filtroUsuarios.trim()
+    ? usuarios.filter(u => {
+        const q = filtroUsuarios.toLowerCase()
+        return (
+          ((u.nombre || '') + ' ' + (u.apellido || '')).toLowerCase().includes(q) ||
+          (u.nickname || '').toLowerCase().includes(q) ||
+          codigoUsuario(u.id).toLowerCase().includes(q) ||
+          (u.celular || '').includes(q) ||
+          (u.email || '').toLowerCase().includes(q)
+        )
+      })
+    : usuarios
+
   return (
     <main style={{ fontFamily:'sans-serif', background:'#f9f9f9', minHeight:'100vh' }}>
       <Navbar />
@@ -378,14 +450,14 @@ export default function PanelAdmin() {
 
         <div style={{ display:'flex', gap:'6px', marginBottom:'20px', flexWrap:'wrap' }}>
           {[
-            { key:'usuarios',       label:'Usuarios',       count: usuarios.length,               badge: false, href: null },
-            { key:'remates',        label:'Remates',        count: remates.length,                badge: false, href: null },
-            { key:'mensajes',       label:'Mensajes',       count: mensajesPendientes,            badge: true,  href: null },
-            { key:'verificaciones', label:'Verificaciones', count: pendientesVerificacion.length, badge: true,  href: null },
-            { key:'calificaciones', label:'Calificaciones', count: null,                          badge: false, href: '/admin/calificaciones' },
-            { key:'beta',           label:'Modo BETA',      count: null,                          badge: false, href: null },
-            { key:'paquetes',       label:'Paquetes',       count: null,                          badge: false, href: null },
-            { key:'organizadores',  label:'Remates Especiales', count: organizadores.length,      badge: false, href: null },
+            { key:'usuarios',       label:'Usuarios',           count: usuarios.length,               badge: false, href: null },
+            { key:'remates',        label:'Remates',            count: remates.length,                badge: false, href: null },
+            { key:'mensajes',       label:'Mensajes',           count: mensajesPendientes,            badge: true,  href: null },
+            { key:'verificaciones', label:'Verificaciones',     count: pendientesVerificacion.length, badge: true,  href: null },
+            { key:'calificaciones', label:'Calificaciones',     count: null,                          badge: false, href: '/admin/calificaciones' },
+            { key:'beta',           label:'Modo BETA',          count: null,                          badge: false, href: null },
+            { key:'paquetes',       label:'Paquetes',           count: null,                          badge: false, href: null },
+            { key:'organizadores',  label:'Remates Especiales', count: organizadores.length,          badge: false, href: null },
           ].map(t => (
             t.href ? (
               <a key={t.key} href={t.href} style={{ ...estilo.tab(false), textDecoration:'none' }}>
@@ -412,24 +484,65 @@ export default function PanelAdmin() {
         {/* USUARIOS */}
         {tab === 'usuarios' && (
           <div>
-            {usuarios.length === 0
-              ? <div style={{ textAlign:'center', padding:'40px', color:'#999' }}>No hay usuarios.</div>
+            <div style={{ display:'flex', gap:'10px', marginBottom:'14px', alignItems:'center' }}>
+              <input
+                placeholder='Buscar por nombre, nickname, código (#A1B2C3), teléfono o email...'
+                value={filtroUsuarios}
+                onChange={e => setFiltroUsuarios(e.target.value)}
+                style={{ flex:1, padding:'9px 12px', borderRadius:'8px', border:'1px solid #ddd', fontSize:'13px' }}
+              />
+              <button onClick={exportarCSV}
+                style={{ padding:'9px 16px', borderRadius:'8px', border:'1px solid #1D9E75', color:'#1D9E75', background:'#fff', fontSize:'13px', cursor:'pointer', fontWeight:'500', whiteSpace:'nowrap' }}>
+                ↓ Exportar Excel
+              </button>
+            </div>
+            {usuariosFiltrados.length === 0
+              ? <div style={{ textAlign:'center', padding:'40px', color:'#999' }}>No se encontraron usuarios.</div>
               : <>
-                  <ContadorItems items={usuarios} />
-                  {paginar(usuarios).map(u => (
+                  <ContadorItems items={usuariosFiltrados} />
+                  {paginar(usuariosFiltrados).map(u => (
                     <div key={u.id} style={estilo.card}>
-                      <div style={{ display:'flex', alignItems:'center', gap:'12px' }}>
-                        <div style={{ width:'40px', height:'40px', borderRadius:'50%', background:'#E1F5EE', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'14px', fontWeight:'500', color:'#085041', flexShrink:0 }}>
-                          {u.nickname?.charAt(0).toUpperCase()}
+                      <div style={{ display:'flex', gap:'12px', alignItems:'flex-start' }}>
+                        <div style={{ flexShrink:0 }}>
+                          <div style={{ background:'#085041', color:'white', borderRadius:'8px', padding:'4px 8px', fontSize:'11px', fontWeight:'700', letterSpacing:'1px', textAlign:'center', marginBottom:'4px' }}>
+                            {codigoUsuario(u.id)}
+                          </div>
+                          <div style={{ width:'40px', height:'40px', borderRadius:'50%', background:'#E1F5EE', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'14px', fontWeight:'500', color:'#085041', margin:'0 auto' }}>
+                            {(u.nombre || u.nickname || '?').charAt(0).toUpperCase()}
+                          </div>
                         </div>
-                        <div style={{ flex:1 }}>
-                          <p style={{ fontWeight:'500', fontSize:'14px', marginBottom:'2px' }}>
-                            {u.nickname}
+                        <div style={{ flex:1, minWidth:0 }}>
+                          <div style={{ display:'flex', alignItems:'center', gap:'8px', flexWrap:'wrap', marginBottom:'2px' }}>
+                            <p style={{ fontWeight:'600', fontSize:'14px', margin:0 }}>
+                              {u.nombre || ''} {u.apellido || ''}
+                            </p>
+                            <span style={{ fontSize:'12px', color:'#999' }}>@{u.nickname}</span>
                             {!u.celular_verificado && (
-                              <span style={{ fontSize:'10px', background:'#FFF8E1', color:'#7B5800', border:'1px solid #FFE082', padding:'2px 6px', borderRadius:'10px', marginLeft:'8px' }}>
+                              <span style={{ fontSize:'10px', background:'#FFF8E1', color:'#7B5800', border:'1px solid #FFE082', padding:'2px 6px', borderRadius:'10px' }}>
                                 Sin verificar
                               </span>
                             )}
+                          </div>
+                          <p style={{ fontSize:'12px', color:'#666', margin:'0 0 2px' }}>
+                            {u.email || <span style={{ color:'#bbb' }}>sin email</span>}
+                          </p>
+                          <p style={{ fontSize:'12px', color:'#666', margin:'0 0 6px', display:'flex', alignItems:'center', gap:'6px' }}>
+                            {u.celular ? (
+                              <>
+                                <span>+51 {u.celular}</span>
+                                {u.celular_verificado && <span style={{ color:'#1D9E75' }}>✓</span>}
+                                <button onClick={() => navigator.clipboard.writeText('+51' + u.celular)}
+                                  title='Copiar número'
+                                  style={{ background:'none', border:'1px solid #ddd', borderRadius:'6px', padding:'1px 6px', fontSize:'11px', cursor:'pointer', color:'#666' }}>
+                                  📋
+                                </button>
+                                <a href={`https://wa.me/51${u.celular}?text=${encodeURIComponent('Su cuenta ya se encuentra verificada. ¡Bienvenido a Puja.pe!')}`} target='_blank'
+                                  title='Abrir en WhatsApp'
+                                  style={{ background:'#25D366', borderRadius:'6px', padding:'2px 7px', fontSize:'11px', color:'white', textDecoration:'none' }}>
+                                  WA
+                                </a>
+                              </>
+                            ) : <span style={{ color:'#bbb' }}>sin teléfono</span>}
                           </p>
                           <div style={{ display:'flex', gap:'12px' }}>
                             <button onClick={() => verDetalleUsuario(u, 'pujas')}
@@ -437,35 +550,37 @@ export default function PanelAdmin() {
                               {u.totalPujas} pujas
                             </button>
                             <button onClick={() => verDetalleUsuario(u, 'remates')}
-                              style={{ fontSize:'11px', color:'#1D9E75', background:'none', border:'none', cursor:'pointer', padding:0 }}>
+                              style={{ fontSize:'11px', color:'#1D9E75', background:'none', border:'pointer', cursor:'pointer', padding:0 }}>
                               {u.totalRemates} remates
                             </button>
                           </div>
                         </div>
-                        <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
-                          <div style={{ textAlign:'center' }}>
-                            <p style={{ fontSize:'11px', color:'#999', marginBottom:'4px' }}>Créditos</p>
+                        <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:'8px', flexShrink:0 }}>
+                          <div style={{ display:'flex', alignItems:'center', gap:'6px' }}>
+                            <span style={{ fontSize:'11px', color:'#999' }}>Créditos</span>
                             <input type='number' defaultValue={u.creditos}
                               onChange={e => setCreditosEditar({ ...creditosEditar, [u.id]: e.target.value })}
-                              style={{ width:'70px', padding:'6px 8px', borderRadius:'8px', border:'1px solid #ddd', fontSize:'13px', textAlign:'center' }} />
+                              style={{ width:'65px', padding:'5px 8px', borderRadius:'8px', border:'1px solid #ddd', fontSize:'13px', textAlign:'center' }} />
+                            <button onClick={() => actualizarCreditos(u.id, creditosEditar[u.id] ?? u.creditos)}
+                              style={{ padding:'5px 10px', background:'#1D9E75', color:'white', border:'none', borderRadius:'8px', fontSize:'12px', cursor:'pointer' }}>
+                              ✓
+                            </button>
                           </div>
-                          <button onClick={() => actualizarCreditos(u.id, creditosEditar[u.id] ?? u.creditos)}
-                            style={{ padding:'6px 12px', background:'#1D9E75', color:'white', border:'none', borderRadius:'8px', fontSize:'12px', cursor:'pointer' }}>
-                            Guardar
-                          </button>
-                          <button onClick={() => { if(confirm('¿Suspender a ' + u.nickname + '?')) suspenderUsuario(u.id) }}
-                            style={{ padding:'6px 12px', background:'#FCEBEB', color:'#A32D2D', border:'1px solid #E24B4A', borderRadius:'8px', fontSize:'12px', cursor:'pointer' }}>
-                            Suspender
-                          </button>
-                          <button onClick={() => eliminarUsuario(u.id, u.nickname)}
-                            style={{ padding:'6px 10px', background:'#A32D2D', color:'white', border:'none', borderRadius:'8px', fontSize:'12px', cursor:'pointer' }}>
-                            🗑
-                          </button>
+                          <div style={{ display:'flex', gap:'6px' }}>
+                            <button onClick={() => { if(confirm('¿Suspender a ' + u.nickname + '?')) suspenderUsuario(u.id) }}
+                              style={{ padding:'5px 10px', background:'#FCEBEB', color:'#A32D2D', border:'1px solid #E24B4A', borderRadius:'8px', fontSize:'11px', cursor:'pointer' }}>
+                              Suspender
+                            </button>
+                            <button onClick={() => eliminarUsuario(u.id, u.nickname)}
+                              style={{ padding:'5px 10px', background:'#A32D2D', color:'white', border:'none', borderRadius:'8px', fontSize:'11px', cursor:'pointer' }}>
+                              🗑
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </div>
                   ))}
-                  <Paginacion items={usuarios} />
+                  <Paginacion items={usuariosFiltrados} />
                 </>
             }
           </div>
@@ -484,11 +599,18 @@ export default function PanelAdmin() {
                   {paginar(pendientesVerificacion).map(u => (
                     <div key={u.id} style={{ ...estilo.card, border:'1px solid #FFE082', background:'#FFFDF0' }}>
                       <div style={{ display:'flex', alignItems:'center', gap:'12px' }}>
-                        <div style={{ width:'40px', height:'40px', borderRadius:'50%', background:'#FFF8E1', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'14px', fontWeight:'500', color:'#7B5800', flexShrink:0 }}>
-                          {u.nickname?.charAt(0).toUpperCase()}
+                        <div style={{ flexShrink:0 }}>
+                          <div style={{ background:'#085041', color:'white', borderRadius:'6px', padding:'3px 7px', fontSize:'10px', fontWeight:'700', textAlign:'center', marginBottom:'4px' }}>
+                            {codigoUsuario(u.id)}
+                          </div>
+                          <div style={{ width:'40px', height:'40px', borderRadius:'50%', background:'#FFF8E1', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'14px', fontWeight:'500', color:'#7B5800' }}>
+                            {(u.nombre || u.nickname || '?').charAt(0).toUpperCase()}
+                          </div>
                         </div>
                         <div style={{ flex:1 }}>
-                          <p style={{ fontWeight:'500', fontSize:'14px', marginBottom:'2px' }}>{u.nickname}</p>
+                          <p style={{ fontWeight:'500', fontSize:'14px', marginBottom:'2px' }}>
+                            {u.nombre || ''} {u.apellido || ''} <span style={{ fontWeight:'400', color:'#999' }}>@{u.nickname}</span>
+                          </p>
                           <p style={{ fontSize:'12px', color:'#999' }}>
                             Celular: +51 {u.celular} · Registrado: {new Date(u.created_at).toLocaleDateString('es-PE')}
                           </p>
@@ -739,11 +861,40 @@ export default function PanelAdmin() {
                     placeholder='contacto@organizacion.com'
                     style={{ width:'100%', padding:'8px 10px', borderRadius:'8px', border:'1px solid #ddd', fontSize:'13px', boxSizing:'border-box' }} />
                 </div>
+
+                {/* Búsqueda por código de usuario */}
                 <div style={{ gridColumn:'1/-1' }}>
-                  <label style={{ fontSize:'11px', color:'#666', display:'block', marginBottom:'3px' }}>Nickname del usuario organizador (opcional)</label>
-                  <input value={formOrganizador.usuario_email} onChange={e => setFormOrganizador({...formOrganizador, usuario_email: e.target.value})}
-                    placeholder='nickname del organizador en puja.pe'
-                    style={{ width:'100%', padding:'8px 10px', borderRadius:'8px', border:'1px solid #ddd', fontSize:'13px', boxSizing:'border-box' }} />
+                  <label style={{ fontSize:'11px', color:'#666', display:'block', marginBottom:'3px' }}>
+                    Código de usuario organizador (opcional)
+                    <span style={{ marginLeft:'6px', color:'#999', fontWeight:'400' }}>— buscar en la lista de usuarios arriba</span>
+                  </label>
+                  <div style={{ display:'flex', gap:'8px' }}>
+                    <input
+                      value={buscarCodigo}
+                      onChange={e => { setBuscarCodigo(e.target.value.toUpperCase()); setUsuarioEncontrado(null); setFormOrganizador(f => ({ ...f, usuario_id: null })) }}
+                      placeholder='Ej: #A1B2C3'
+                      style={{ flex:1, padding:'8px 10px', borderRadius:'8px', border:'1px solid #ddd', fontSize:'13px', boxSizing:'border-box', fontFamily:'monospace' }}
+                    />
+                    <button onClick={buscarUsuarioOrganizador} disabled={buscandoUsuario || !buscarCodigo.trim()}
+                      style={{ padding:'8px 16px', border:'none', borderRadius:'8px', fontSize:'13px', cursor: buscarCodigo.trim() ? 'pointer' : 'default', fontWeight:'500', whiteSpace:'nowrap', transition:'all 0.2s',
+                        background: buscarCodigo.trim() ? '#1D9E75' : '#eee',
+                        color: buscarCodigo.trim() ? 'white' : '#aaa',
+                      }}>
+                      {buscandoUsuario ? 'Buscando...' : 'Buscar usuario'}
+                    </button>
+                  </div>
+                  {usuarioEncontrado && !usuarioEncontrado.error && (
+                    <div style={{ marginTop:'8px', padding:'10px 12px', background:'#E1F5EE', borderRadius:'8px', border:'1px solid #9FE1CB', fontSize:'13px' }}>
+                      ✅ <strong>{usuarioEncontrado.nombre} {usuarioEncontrado.apellido}</strong> (@{usuarioEncontrado.nickname})
+                      {usuarioEncontrado.email && <span style={{ color:'#666', marginLeft:'8px' }}>{usuarioEncontrado.email}</span>}
+                      <span style={{ color:'#999', marginLeft:'8px', fontSize:'11px' }}>— datos auto-completados</span>
+                    </div>
+                  )}
+                  {usuarioEncontrado?.error && (
+                    <p style={{ marginTop:'6px', fontSize:'12px', color:'#A32D2D' }}>
+                      Usuario no encontrado. Verifica el código en la pestaña Usuarios.
+                    </p>
+                  )}
                 </div>
               </div>
               <button onClick={crearOrganizador} disabled={creandoOrganizador || !formOrganizador.nombre_organizacion || !formOrganizador.codigo_acceso}
@@ -773,6 +924,10 @@ export default function PanelAdmin() {
                       <button onClick={() => toggleOrganizador(org.id, org.activo)}
                         style={{ padding:'7px 14px', borderRadius:'8px', border:'none', background: org.activo ? '#FCEBEB' : '#E1F5EE', color: org.activo ? '#A32D2D' : '#085041', fontSize:'12px', cursor:'pointer', fontWeight:'500' }}>
                         {org.activo ? 'Desactivar' : 'Activar'}
+                      </button>
+                      <button onClick={() => eliminarOrganizador(org.id, org.nombre_organizacion)}
+                        style={{ padding:'7px 10px', background:'#A32D2D', color:'white', border:'none', borderRadius:'8px', fontSize:'12px', cursor:'pointer' }}>
+                        🗑
                       </button>
                     </div>
                   </div>

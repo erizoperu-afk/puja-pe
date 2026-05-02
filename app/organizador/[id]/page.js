@@ -27,6 +27,8 @@ export default function PanelOrganizador({ params }) {
   const [organizador, setOrganizador] = useState(null)
   const [remates, setRemates] = useState([])
   const [autorizado, setAutorizado] = useState(false)
+  const [esAdmin, setEsAdmin] = useState(false)
+  const [sessionEmail, setSessionEmail] = useState('')
   const [cargando, setCargando] = useState(true)
   const [publicando, setPublicando] = useState(false)
   const [mostrarForm, setMostrarForm] = useState(false)
@@ -54,9 +56,11 @@ export default function PanelOrganizador({ params }) {
       setOrganizador(org)
 
       const { data: admin } = await supabase.from('admins').select('email').eq('email', session.user.email).maybeSingle()
-      const esAdmin = !!admin
+      const esAdminVal = !!admin
       const esOrganizador = org.usuario_id === session.user.id
-      if (!esAdmin && !esOrganizador) { window.location.href = '/'; return }
+      if (!esAdminVal && !esOrganizador) { window.location.href = '/'; return }
+      setEsAdmin(esAdminVal)
+      setSessionEmail(session.user.email)
       setAutorizado(true)
 
       const { data: rematesData } = await supabase.from('remates_especiales').select('*').eq('organizador_id', id).order('created_at', { ascending: false })
@@ -125,6 +129,18 @@ export default function PanelOrganizador({ params }) {
     setExito('¡Remate especial publicado!')
     setTimeout(() => setExito(''), 3000)
     setPublicando(false)
+  }
+
+  async function eliminarRemate(remateId, titulo) {
+    if (!confirm(`¿Eliminar permanentemente "${titulo}"? Esta acción no se puede deshacer.`)) return
+    const res = await fetch('/api/admin/eliminar-remate-especial', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ remateId, adminEmail: sessionEmail })
+    })
+    if (!res.ok) { setError('Error al eliminar el remate.'); return }
+    const { data: rematesData } = await supabase.from('remates_especiales').select('*').eq('organizador_id', organizadorId).order('created_at', { ascending: false })
+    setRemates(rematesData || [])
   }
 
   const campo = { width:'100%', padding:'9px 11px', borderRadius:'8px', border:'1px solid #ddd', fontSize:'13px', boxSizing:'border-box' }
@@ -246,7 +262,15 @@ export default function PanelOrganizador({ params }) {
                 {new Date(r.fecha_inicio).toLocaleDateString('es-PE')} → {new Date(r.fecha_fin).toLocaleDateString('es-PE')}
               </p>
             </div>
-            <a href={`/remate-especial/${r.id}`} style={{ fontSize:'12px', color:'#1D9E75', padding:'6px 12px', border:'1px solid #1D9E75', borderRadius:'8px', textDecoration:'none', alignSelf:'center' }}>Ver</a>
+            <div style={{ display:'flex', gap:'8px', alignSelf:'center' }}>
+              <a href={`/remate-especial/${r.id}`} style={{ fontSize:'12px', color:'#1D9E75', padding:'6px 12px', border:'1px solid #1D9E75', borderRadius:'8px', textDecoration:'none' }}>Ver</a>
+              {esAdmin && (
+                <button onClick={() => eliminarRemate(r.id, r.titulo)}
+                  style={{ fontSize:'12px', padding:'6px 10px', background:'#A32D2D', color:'white', border:'none', borderRadius:'8px', cursor:'pointer' }}>
+                  🗑
+                </button>
+              )}
+            </div>
           </div>
         ))}
       </div>
