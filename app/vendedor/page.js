@@ -307,24 +307,10 @@ export default function PanelVendedor() {
           </div>
         </div>
 
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:'8px', marginBottom:'20px' }}>
-          {[
-            ['Activos',     rematesActivos.length,   '#1D9E75'],
-            ['Vendidos',    rematesVendidos.length,  '#185FA5'],
-            ['Sin ofertas', rematesSinOferta.length, '#999'   ],
-            ['Pujas total', totalPujas,              '#333'   ],
-          ].map(([lbl, val, color]) => (
-            <div key={lbl} style={{ background:'#fff', border:'1px solid #eee', borderRadius:'10px', padding:'12px' }}>
-              <div style={{ fontSize:'11px', color:'#999', marginBottom:'4px' }}>{lbl}</div>
-              <div style={{ fontSize:'22px', fontWeight:'500', color }}>{val}</div>
-            </div>
-          ))}
-        </div>
-
-        <div style={{ display:'flex', gap:'6px', marginBottom:'16px', overflowX:'auto', paddingBottom:'4px' }}>
+        <div style={{ display:'flex', gap:'8px', marginBottom:'16px', overflowX:'auto', paddingBottom:'4px' }}>
           {tabs.map(t => (
             <button key={t.key} onClick={() => setTab(t.key)}
-              style={{ padding:'7px 14px', borderRadius:'20px', cursor:'pointer', fontSize:'12px', fontWeight:'500', whiteSpace:'nowrap',
+              style={{ padding:'10px 20px', borderRadius:'20px', cursor:'pointer', fontSize:'14px', fontWeight:'500', whiteSpace:'nowrap',
                 background: tab === t.key ? '#1D9E75' : '#fff',
                 color:      tab === t.key ? '#fff'    : '#666',
                 border:     tab === t.key ? '1px solid #1D9E75' : '1px solid #eee',
@@ -508,7 +494,13 @@ export default function PanelVendedor() {
                         </div>
                         <div>
                           <p style={{ fontSize:'10px', color:'#666', marginBottom:'2px' }}>Celular</p>
-                          <p style={{ fontSize:'13px', fontWeight:'500', color:'#185FA5' }}>+51 {contacto.celular}</p>
+                          <div style={{ display:'flex', alignItems:'center', gap:'6px' }}>
+                            <p style={{ fontSize:'13px', fontWeight:'500', color:'#185FA5' }}>+51 {contacto.celular}</p>
+                            <a href={`https://wa.me/51${contacto.celular}`} target='_blank' rel='noreferrer'
+                              style={{ background:'#25D366', color:'white', borderRadius:'6px', padding:'3px 8px', fontSize:'11px', fontWeight:'500', textDecoration:'none', flexShrink:0 }}>
+                              WhatsApp
+                            </a>
+                          </div>
                         </div>
                         <div>
                           <p style={{ fontSize:'10px', color:'#666', marginBottom:'2px' }}>Nickname</p>

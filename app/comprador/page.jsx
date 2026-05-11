@@ -16,6 +16,7 @@ export default function PanelComprador() {
   const [cargando, setCargando] = useState(true)
   const [pagina, setPagina] = useState(1)
   const [contactosVendedor, setContactosVendedor] = useState({})
+  const [datosComprador, setDatosComprador] = useState(null)
 
   useEffect(() => {
     async function cargarDatos() {
@@ -31,7 +32,6 @@ export default function PanelComprador() {
       setFavoritos(misFavoritos || [])
 
       const { data: misGanados } = await supabase.from('pujas').select('*, remates(*)').eq('usuario_id', uid).eq('ganador', true).order('created_at', { ascending: false })
-      setGanados(misGanados || [])
 
       const { data: misNotis } = await supabase.from('notificaciones').select('*, remates(*)').eq('usuario_id', uid).order('created_at', { ascending: false })
       setNotificaciones(misNotis || [])
@@ -42,9 +42,17 @@ export default function PanelComprador() {
         .eq('comprador_id', uid)
         .eq('activo', false)
 
-      const todosGanados = [...(misGanados || []), ...(compras || []).map(c => ({ remates: c }))]
+      const { data: perfil } = await supabase.from('usuarios').select('nombre, apellido, celular, nickname').eq('id', uid).single()
+      setDatosComprador(perfil)
+
+      const todasMisCompras = [
+        ...(misGanados || []).map(g => ({ ...g, tipo_compra: 'puja' })),
+        ...(compras || []).map(c => ({ remates: c, monto: c.precio_actual, tipo_compra: 'precio_fijo' }))
+      ]
+      setGanados(todasMisCompras)
+
       const contactos = {}
-      for (const item of todosGanados) {
+      for (const item of todasMisCompras) {
         const remate = item.remates
         if (remate?.vendedor_id && !contactos[remate.id]) {
           const { data: contacto } = await supabase.rpc('get_datos_contacto', { p_usuario_id: remate.vendedor_id })
@@ -116,11 +124,40 @@ export default function PanelComprador() {
           </div>
           <div>
             <p style={{ fontSize:'10px', color:'#666', marginBottom:'2px' }}>Celular</p>
-            <p style={{ fontSize:'13px', fontWeight:'500', color:'#085041' }}>+51 {contacto.celular}</p>
+            <div style={{ display:'flex', alignItems:'center', gap:'6px' }}>
+              <p style={{ fontSize:'13px', fontWeight:'500', color:'#085041' }}>+51 {contacto.celular}</p>
+              <a href={`https://wa.me/51${contacto.celular}`} target='_blank' rel='noreferrer'
+                style={{ background:'#25D366', color:'white', borderRadius:'6px', padding:'3px 8px', fontSize:'11px', fontWeight:'500', textDecoration:'none', flexShrink:0 }}>
+                WhatsApp
+              </a>
+            </div>
           </div>
           <div>
             <p style={{ fontSize:'10px', color:'#666', marginBottom:'2px' }}>Nickname</p>
             <p style={{ fontSize:'13px', fontWeight:'500', color:'#085041' }}>{contacto.nickname}</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  function DatosComprador() {
+    if (!datosComprador) return null
+    return (
+      <div style={{ marginTop:'8px', background:'#EEF4FF', borderRadius:'8px', padding:'12px', border:'1px solid #B3D1FF' }}>
+        <p style={{ fontSize:'12px', fontWeight:'500', color:'#1a4580', marginBottom:'8px' }}>Tus datos (el vendedor te contactará)</p>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(140px, 1fr))', gap:'8px' }}>
+          <div>
+            <p style={{ fontSize:'10px', color:'#666', marginBottom:'2px' }}>Nombre</p>
+            <p style={{ fontSize:'13px', fontWeight:'500', color:'#1a4580' }}>{datosComprador.nombre} {datosComprador.apellido}</p>
+          </div>
+          <div>
+            <p style={{ fontSize:'10px', color:'#666', marginBottom:'2px' }}>Celular</p>
+            <p style={{ fontSize:'13px', fontWeight:'500', color:'#1a4580' }}>+51 {datosComprador.celular}</p>
+          </div>
+          <div>
+            <p style={{ fontSize:'10px', color:'#666', marginBottom:'2px' }}>Nickname</p>
+            <p style={{ fontSize:'13px', fontWeight:'500', color:'#1a4580' }}>{datosComprador.nickname}</p>
           </div>
         </div>
       </div>
@@ -146,7 +183,7 @@ export default function PanelComprador() {
 
   const tabs = [
     { key:'pujas',          label:'Mis pujas',      count: pujas.length },
-    { key:'ganados',        label:'Ganados',         count: ganados.length },
+    { key:'ganados',        label:'Mis Compras',     count: ganados.length },
     { key:'favoritos',      label:'Favoritos',       count: favoritos.length },
     { key:'notificaciones', label:'Notificaciones',  count: notisNoLeidas },
   ]
@@ -175,39 +212,29 @@ export default function PanelComprador() {
           <div style={{ background:'#E1F5EE', border:'1.5px solid #1D9E75', borderRadius:'12px', padding:'14px', marginBottom:'16px', display:'flex', alignItems:'center', justifyContent:'space-between', gap:'12px' }}>
             <div>
               <p style={{ fontSize:'13px', fontWeight:'500', color:'#085041', marginBottom:'2px' }}>
-                {ganados.length === 1 ? 'Ganaste 1 remate' : `Ganaste ${ganados.length} remates`} — coordina la entrega con {ganados.length === 1 ? 'el vendedor' : 'los vendedores'}
+                {ganados.length === 1 ? 'Tienes 1 compra' : `Tienes ${ganados.length} compras`} — coordina la entrega con {ganados.length === 1 ? 'el vendedor' : 'los vendedores'}
               </p>
-              <p style={{ fontSize:'12px', color:'#1D9E75' }}>Los datos de contacto aparecen en cada tarjeta de ganado</p>
+              <p style={{ fontSize:'12px', color:'#1D9E75' }}>Los datos del vendedor y tus datos aparecen en cada tarjeta</p>
             </div>
             <button onClick={() => setTab('ganados')}
               style={{ padding:'7px 14px', background:'#1D9E75', color:'white', border:'none', borderRadius:'8px', fontSize:'12px', fontWeight:'500', cursor:'pointer', flexShrink:0 }}>
-              Ver ganados
+              Ver compras
             </button>
           </div>
         )}
 
-        {/* MÉTRICAS */}
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:'8px', marginBottom:'20px' }}>
-          {[
-            ['Pujas',         pujas.length,      '#333'   ],
-            ['Ganados',       ganados.length,    '#1D9E75'],
-            ['Favoritos',     favoritos.length,  '#185FA5'],
-            ['Notificaciones', notisNoLeidas,    '#A32D2D'],
-          ].map(([lbl, val, color]) => (
-            <div key={lbl} style={{ background:'#fff', border:'1px solid #eee', borderRadius:'10px', padding:'12px' }}>
-              <div style={{ fontSize:'11px', color:'#999', marginBottom:'4px' }}>{lbl}</div>
-              <div style={{ fontSize:'22px', fontWeight:'500', color }}>{val}</div>
-            </div>
-          ))}
-        </div>
-
         {/* TABS */}
-        <div style={{ display:'flex', gap:'6px', marginBottom:'16px', overflowX:'auto', paddingBottom:'4px' }}>
+        <div style={{ display:'flex', gap:'8px', marginBottom:'16px', overflowX:'auto', paddingBottom:'4px' }}>
           {tabs.map(t => (
-            <button key={t.key} onClick={() => setTab(t.key)} style={estilo.tab(tab === t.key)}>
+            <button key={t.key} onClick={() => setTab(t.key)}
+              style={{ padding:'10px 20px', borderRadius:'20px', cursor:'pointer', fontSize:'14px', fontWeight:'500', whiteSpace:'nowrap',
+                background: tab === t.key ? '#1D9E75' : '#fff',
+                color:      tab === t.key ? '#fff'    : '#666',
+                border:     tab === t.key ? '1px solid #1D9E75' : '1px solid #eee',
+              }}>
               {t.label}
               {t.key === 'notificaciones' && notisNoLeidas > 0
-                ? <span style={{ background:'#E24B4A', color:'white', borderRadius:'50%', padding:'1px 5px', fontSize:'10px', marginLeft:'4px' }}>{notisNoLeidas}</span>
+                ? <span style={{ background:'#E24B4A', color:'white', borderRadius:'50%', padding:'1px 5px', fontSize:'11px', marginLeft:'4px' }}>{notisNoLeidas}</span>
                 : <span style={{ opacity:.7, marginLeft:'4px' }}>({t.count})</span>
               }
             </button>
@@ -249,17 +276,17 @@ export default function PanelComprador() {
           </div>
         )}
 
-        {/* GANADOS */}
+        {/* MIS COMPRAS */}
         {tab === 'ganados' && (
           <div>
             {ganados.length === 0
-              ? <div style={estilo.vacio}>Aún no has ganado ningún remate.</div>
+              ? <div style={estilo.vacio}>Aún no has realizado ninguna compra.</div>
               : <>
                   <ContadorItems items={ganados} />
                   {paginar(ganados).map((puja) => {
                     const remate = puja.remates
                     return (
-                      <div key={puja.id} style={{ ...estilo.tarjeta, border:'1.5px solid #1D9E75' }}>
+                      <div key={puja.id || 'pf-' + remate?.id} style={{ ...estilo.tarjeta, border:'1.5px solid #1D9E75' }}>
                         <div style={{ display:'flex', alignItems:'center', gap:'12px', flexWrap:'wrap' }}>
                           <div style={{ width:'48px', height:'48px', background:'#f5f5f5', borderRadius:'8px', border:'1px solid #eee', flexShrink:0, overflow:'hidden' }}>
                             {remate?.imagen_url && <img src={remate.imagen_url} alt='' style={{ width:'100%', height:'100%', objectFit:'cover' }} />}
@@ -270,11 +297,12 @@ export default function PanelComprador() {
                           </div>
                           <div style={{ textAlign:'right', flexShrink:0 }}>
                             <p style={{ fontSize:'14px', fontWeight:'500', marginBottom:'4px' }}>S/ {Number(puja.monto).toLocaleString()}</p>
-                            <span style={estilo.badge('verde')}>Ganado</span>
+                            <span style={estilo.badge('verde')}>{puja.tipo_compra === 'precio_fijo' ? 'Precio fijo' : 'Puja ganada'}</span>
                           </div>
                           <a href={'/remate/' + remate?.id} style={{ fontSize:'12px', color:'#1D9E75', textDecoration:'none', padding:'6px 10px', border:'1px solid #1D9E75', borderRadius:'8px', flexShrink:0 }}>Ver</a>
                         </div>
                         <ContactoVendedor remateId={remate?.id} />
+                        <DatosComprador />
                       </div>
                     )
                   })}
