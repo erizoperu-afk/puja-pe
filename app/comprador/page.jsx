@@ -8,7 +8,6 @@ const POR_PAGINA = 6
 
 export default function PanelComprador() {
   const [tab, setTab] = useState('pujas')
-  const [usuario, setUsuario] = useState(null)
   const [pujas, setPujas] = useState([])
   const [favoritos, setFavoritos] = useState([])
   const [ganados, setGanados] = useState([])
@@ -16,13 +15,11 @@ export default function PanelComprador() {
   const [cargando, setCargando] = useState(true)
   const [pagina, setPagina] = useState(1)
   const [contactosVendedor, setContactosVendedor] = useState({})
-  const [datosComprador, setDatosComprador] = useState(null)
 
   useEffect(() => {
     async function cargarDatos() {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) { window.location.href = '/login'; return }
-      setUsuario(session.user)
       const uid = session.user.id
 
       const { data: misPujas } = await supabase.from('pujas').select('*, remates(*)').eq('usuario_id', uid).order('created_at', { ascending: false })
@@ -41,9 +38,6 @@ export default function PanelComprador() {
         .select('*')
         .eq('comprador_id', uid)
         .eq('activo', false)
-
-      const { data: perfil } = await supabase.from('usuarios').select('nombre, apellido, celular, nickname').eq('id', uid).single()
-      setDatosComprador(perfil)
 
       const todasMisCompras = [
         ...(misGanados || []).map(g => ({ ...g, tipo_compra: 'puja' })),
@@ -135,29 +129,6 @@ export default function PanelComprador() {
           <div>
             <p style={{ fontSize:'10px', color:'#666', marginBottom:'2px' }}>Nickname</p>
             <p style={{ fontSize:'13px', fontWeight:'500', color:'#085041' }}>{contacto.nickname}</p>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  function DatosComprador() {
-    if (!datosComprador) return null
-    return (
-      <div style={{ marginTop:'8px', background:'#EEF4FF', borderRadius:'8px', padding:'12px', border:'1px solid #B3D1FF' }}>
-        <p style={{ fontSize:'12px', fontWeight:'500', color:'#1a4580', marginBottom:'8px' }}>Tus datos (el vendedor te contactará)</p>
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(140px, 1fr))', gap:'8px' }}>
-          <div>
-            <p style={{ fontSize:'10px', color:'#666', marginBottom:'2px' }}>Nombre</p>
-            <p style={{ fontSize:'13px', fontWeight:'500', color:'#1a4580' }}>{datosComprador.nombre} {datosComprador.apellido}</p>
-          </div>
-          <div>
-            <p style={{ fontSize:'10px', color:'#666', marginBottom:'2px' }}>Celular</p>
-            <p style={{ fontSize:'13px', fontWeight:'500', color:'#1a4580' }}>+51 {datosComprador.celular}</p>
-          </div>
-          <div>
-            <p style={{ fontSize:'10px', color:'#666', marginBottom:'2px' }}>Nickname</p>
-            <p style={{ fontSize:'13px', fontWeight:'500', color:'#1a4580' }}>{datosComprador.nickname}</p>
           </div>
         </div>
       </div>
@@ -302,7 +273,6 @@ export default function PanelComprador() {
                           <a href={'/remate/' + remate?.id} style={{ fontSize:'12px', color:'#1D9E75', textDecoration:'none', padding:'6px 10px', border:'1px solid #1D9E75', borderRadius:'8px', flexShrink:0 }}>Ver</a>
                         </div>
                         <ContactoVendedor remateId={remate?.id} />
-                        <DatosComprador />
                       </div>
                     )
                   })}
