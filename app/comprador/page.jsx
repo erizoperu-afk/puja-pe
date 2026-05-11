@@ -122,7 +122,7 @@ export default function PanelComprador() {
               <p style={{ fontSize:'13px', fontWeight:'500', color:'#085041' }}>+51 {contacto.celular}</p>
               <a href={`https://wa.me/51${contacto.celular}`} target='_blank' rel='noreferrer'
                 style={{ background:'#25D366', color:'white', borderRadius:'6px', padding:'3px 8px', fontSize:'11px', fontWeight:'500', textDecoration:'none', flexShrink:0 }}>
-                WhatsApp
+                WSP
               </a>
             </div>
           </div>
